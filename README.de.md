@@ -45,6 +45,8 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 | Live-Kamerabild, Mac-Kamera, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`) |
 | Instrument-Boxen mit Beschriftung, bis zu 4 | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
 | Pillen "gehört" und "gesehen", kleines Spektrum | laufen |
+| Modus-Zeichen neben dem Zahnrad: Mikrofon (nur Ton), Kamera, Video oder Demo, mit dem Verbindungspunkt | läuft |
+| Kameralicht: Aus, An, Auto (Standard; an, solange das Bild dunkel ist) | läuft im Simulator (die Mac-Kamera hat kein Licht, es wird gemeldet); auf dem Board ein markiertes TODO für die Blitz-LED des Moduls |
 | Einstellungen: Einstellungen, Anbindungen, **Kamera** (an, Boxen, fps, Cloud-KI) | laufen; auf dem Board als Einstellungsversion 5 gespeichert |
 | Cloud-KI (experimentell) | ein **Platzhalter**: die Einstellung und `tools/cloud_vision.py` gibt es, in v0 wird nichts gesendet |
 | Kamera auf dem Board | **noch nicht**: der Mosaico-Kameratreiber ist nicht eingebunden (`main/main.c`, TODO camera) |
@@ -123,7 +125,16 @@ Gestaltungsvorbilder (25.10.2026):
 ## Als Nächstes
 
 1. **Echte Erkennung auf dem Mac**: ein Open-Vocabulary-Detektor wie OWL-ViT ("singing bowl", "tuning
-   fork", "gong", "chimes", "drum") in `camera_live.py` statt des Platzhalters.
+   fork", "gong", "chimes", "drum") in `camera_live.py` statt des Platzhalters. Dort testen, wo es schwer ist:
+   - **Wenig Licht.** Klangräume sind dämmrig. `tools/check_frames.py` an zwei frei lizenzierten Testvideos
+     (25.10.2026): ein schwebender Gong im dunklen Raum hatte im Mittel eine Helligkeit von 6 von 255 bei
+     einem Kontrast von 19, 59 % der Zeit flach; eine Gong- und Trommelsitzung war hell (109, Kontrast 84).
+     Den Detektor an beiden messen.
+   - **Wechselnder Hintergrund.** Das Gong-und-Trommel-Video änderte sich im Mittel um 8,4 Helligkeitsstufen
+     pro Bild (bis 12), das dunkle um 0,5: Menschen und Licht bewegen sich. Prüfen, dass die Boxen am
+     Instrument bleiben und nicht mit dem Hintergrund springen.
+   - **Hilft das Licht?** Die Automatik des Kameralichts schaltete im dunklen Video nach 2 s ein und blieb an.
+     Auf dem Board den Detektor mit und ohne Blitz-LED messen, und ihre Wärme im Dauerbetrieb.
 2. **Auf dem Board**: die Mosaico-Kamera einbinden (esp_video, siehe `apps/camera`), dann ein trainiertes
    ESPDet-Pico auf dem ESP32-S31 für die Instrumente; ein Canvas-Ziel statt JPEG-Bildern.
 3. Die KI auf dem Gerät am Board messen: Klangfilter und Detektor, Laufzeit und Speicher.

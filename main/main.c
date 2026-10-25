@@ -59,7 +59,7 @@ static const char *TAG = "chakrav_mosaico";
 
 #define NVS_NS "chakra"     // shared with the chakra app: the same lamps and networks (tools/provision.py)
 #define SETTINGS_KEY "chakrav"  // ChakraV's own settings blob, so the two apps never overwrite each other's
-#define SETTINGS_VERSION 5  // 5: camera on, boxes, fps, cloud end the blob; 4: the AI sound gate; 3: the screen lamp row and the colour
+#define SETTINGS_VERSION 6  // 6: the camera light ends the blob; 5: camera on, boxes, fps, cloud; 4: the AI sound gate; 3: the screen lamp row and the colour
 #define SCREEN_LAMP_PATH "/lamp"
 #define MAX_HA 4
 #define MAX_HUE 16
@@ -197,9 +197,12 @@ static void load_settings(void)
         const size_t v2 = 1 + offsetof(chakra_settings_t, color_mode);
         const size_t v3 = 1 + offsetof(chakra_settings_t, ai);  // version 3 ended before ai: it stays off
         const size_t v4 = 1 + offsetof(chakra_settings_t, cam_on);  // version 4 ended before the camera
+        const size_t v5 = 1 + offsetof(chakra_settings_t, cam_light);  // version 5 ended before the light
         if (nvs_get_blob(h, SETTINGS_KEY, blob, &len) == ESP_OK) {
             if (len == sizeof(blob) && blob[0] == SETTINGS_VERSION) {
                 memcpy(&app.settings, blob + 1, sizeof(chakra_settings_t));
+            } else if (len == v5 && blob[0] == 5) {
+                memcpy(&app.settings, blob + 1, v5 - 1);  // the light keeps its default, Auto
             } else if (len == v4 && blob[0] == 4) {
                 memcpy(&app.settings, blob + 1, v4 - 1);  // the camera fields keep their defaults (on, on, 2, cloud off)
             } else if (len == v3 && blob[0] == 3) {
@@ -343,6 +346,20 @@ static void on_settings(const chakra_settings_t *s, void *ctx)
     chakra_settings_detect(s, &app.cfg);
     app.cfg_dirty = true;
     app.save_due = true;
+}
+
+/* The camera's light. Found in the BSP (25.10.2026): the camera module has a flash LED on GPIO 34,
+ * active low through a high-side P-MOS, switched with mosaico_camera_flash_trigger() and
+ * mosaico_camera_flash_stop() on an open mosaico_camera_handle_t
+ * (workspace/submodule/esp-mosaico-bsp/components/mosaico_module_camera); camera_photo_app uses it
+ * for flash photos only, so how long it may stay on (heat) is not documented.
+ * TODO(camera): with the camera wired in, call those two here, and feed chakra_core_set_frame_luma()
+ * with the mean Y of each frame (the UYVY/YUV preview has it for free). Measure the LED's heat on
+ * the board before leaving it on for a whole session; cap its on-time if needed. */
+static void on_cam_light(bool on, bool dark, void *ctx)
+{
+    (void)ctx;
+    ESP_LOGI(TAG, "camera light %s%s (not wired yet)", on ? "on" : "off", dark ? ", dark picture" : "");
 }
 
 static void on_haptic(int pattern, void *ctx)
@@ -766,10 +783,11 @@ void app_main(void)
     }
     const chakra_core_config_t core_cfg = {.poll = poll_reading, .on_light = on_light, .on_settings = on_settings,
                                            .on_close = on_close, .on_haptic = on_haptic, .now_ms = now_ms,
+                                           .on_cam_light = on_cam_light,
                                            .settings = app.settings};
     ESP_ERROR_CHECK(chakra_core_create(app.ui, &core_cfg, &app.core));
     chakra_core_set_lamps(app.core, app.rows, app.row_count);
-    chakra_core_set_camera_source(app.core, "No camera yet");  // TODO(camera): the module's name and size
+    chakra_core_set_camera_source(app.core, CHAKRA_SOURCE_NONE, "No camera yet");  // TODO(camera): the module's name and size
     xTaskCreate(mic_task, "chakra_mic", 8192, NULL, 6, NULL);
     xTaskCreate(light_task, "chakra_light", 6144, NULL, 4, NULL);
     wifi_and_lamps_start();

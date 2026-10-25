@@ -44,6 +44,8 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 | Live camera view, Mac camera, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`) |
 | Instrument boxes with label pills, up to 4 | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
 | Heard and seen pills, small spectrum | work |
+| Mode mark beside the gear: microphone (sound only), camera, video or demo glyph, with the connection dot | works |
+| Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board a marked TODO for the module's flash LED |
 | Settings: Settings, Connections, **Camera** (on, boxes, fps, Cloud AI) | work; stored as settings version 5 on the board |
 | Cloud AI (experimental) | a **stub**: the setting and `tools/cloud_vision.py` exist, nothing is sent in v0 |
 | Camera on the board | **not yet**: the Mosaico camera driver is not wired in (`main/main.c`, TODO camera) |
@@ -102,11 +104,12 @@ not part of this repository) has a ChakraV tile:
 
 | Line | Meaning |
 |---|---|
-| `frame\t<path>` | a JPEG of exactly 368 x 276, read at once |
+| `frame\t<path>\t<luma>` | a JPEG of exactly 368 x 276, read at once; its mean luma drives the light's Auto |
 | `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 4 |
-| `source\t<text>` | the Camera page's source line |
+| `source\t<text>\t<camera\|video\|demo>` | the Camera page's source line and the mode mark |
 | `sound\t<bowl\|other\|none>\t<strike>` | the local AI sound gate (`tools/ai_gate.py`); while none has spoken for 5 s the detection leads alone |
 | `camera\t<on>\t<boxes>\t<fps>\t<cloud>` | back to every client: the Camera settings |
+| `camlight\t<on>\t<dark>` | back to every client: the camera light should be on or off |
 
 ## Design
 
@@ -133,7 +136,15 @@ Design references (25.10.2026):
 ## Next
 
 1. **Real detection on the Mac**: an open-vocabulary detector such as OWL-ViT ("singing bowl", "tuning
-   fork", "gong", "chimes", "drum") in `camera_live.py`, replacing the stub.
+   fork", "gong", "chimes", "drum") in `camera_live.py`, replacing the stub. Test it where it is hard:
+   - **Low light.** Sound healing rooms are dim. `tools/check_frames.py` on two freely licensed test videos
+     (25.10.2026): a floating gong in a dark room averaged a luma of 6 of 255 with a contrast of 19, flat 59 %
+     of the time; a gong and drum session was bright (luma 109, contrast 84). Measure the detector on both.
+   - **Changing backgrounds.** The gong and drum video changed by 8.4 luma levels a frame on average (up to
+     12), the dark one by 0.5: moving people and light. Check that boxes stay on the instrument and do not
+     jump with the background.
+   - **Does the light help?** The camera light's Auto switched on after 2 s in the dark video and stayed on.
+     On the board, measure the detector with and without the flash LED, and its heat when left on.
 2. **On the board**: wire in the Mosaico camera (esp_video, see `apps/camera`), then a trained
    ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
 3. Measure the on-device AI on the board: the audio gate and the detector, latency and memory.
@@ -148,7 +159,7 @@ Design references (25.10.2026):
 | Screen: frame, camera view, boxes, pills, settings, hold to close | `components/app_chakra/chakra_core.c`, scene `ui/make_scene.py` |
 | Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 5) | `main/main.c` |
 | Simulator side and feeders | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |
-| Screenshots | `tools/screens.py`, `tools/sim_shot.py` |
+| Screenshots; brightness, contrast, change and the light's Auto over a video | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
 
 The internal names stay `app_chakra` and `gsp_chakra_*`, as in the chakra app.
 

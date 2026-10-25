@@ -43,20 +43,20 @@ enum {
     S_KIND_HA, S_KIND_HUE, S_KIND_WIZ, S_KIND_BLE, S_KIND_SCREEN, S_HOLD_CLOSE, S_CLOSING, S_BOWLS, S_STRIKE_BOWL,
     S_HOLD_TONE, S_FLOW, S_STRIKE_MODE, S_SETTINGS, S_CONNECTIONS, S_AUTO, S_COLOUR, S_AI, S_OFF, S_ON,
     S_CAMERA, S_BOXES, S_FPS, S_SOURCE, S_WAITING, S_CAM_OFF, S_BOWL, S_OTHER, S_QUIET, S_TONE, S_NOTHING,
-    S_BOXES_OFF, S_CLOUD, S_COUNT
+    S_BOXES_OFF, S_CLOUD, S_LIGHT, S_LIT, S_UNLIT, S_DARK, S_COUNT
 };
 static const char *const TEXT[2][S_COUNT] = {
     {"Ready", "Strike a bowl or hum", "Brightness", "Sensitivity", "Afterglow", "Notes", "not paired",
      "Home Assistant", "Hue", "Wi-Fi", "Bluetooth", "Screen lamp", "Hold: close ChakraV", "Closing ChakraV", "Bowls",
      "Strike your %s bowl", "hold the tone", "Flow", "Strike", "Settings", "Connections", "Auto", "Colour",
      "Local AI sound gate", "Off", "On", "Camera", "Boxes", "Frame rate", "Source", "Waiting for camera", "Camera off",
-     "Bowl", "Other", "Quiet", "Tone", "Nothing", "Boxes off", "Cloud AI"},
+     "Bowl", "Other", "Quiet", "Tone", "Nothing", "Boxes off", "Cloud AI", "Light", "on", "off", "dark"},
     {"Bereit", "Schale anschlagen", "Helligkeit", "Empfindlichkeit", "Nachklang", "Noten",
      "nicht gekoppelt", "Home Assistant", "Hue", "WLAN", "Bluetooth", "Bildschirm-Lampe", "Halten: ChakraV schließen",
      "ChakraV wird geschlossen", "Schalen", "%s-Schale anschlagen", "Ton halten", "Fließen", "Anschlag",
      "Einstellungen", "Anbindungen", "Auto", "Farbe", "Lokaler KI-Klangfilter", "Aus", "An", "Kamera", "Boxen", "Bildrate",
      "Quelle", "Warte auf Kamera", "Kamera aus", "Schale", "Anderes", "Still", "Ton", "Nichts", "Boxen aus",
-     "Cloud-KI"},
+     "Cloud-KI", "Licht", "an", "aus", "dunkel"},
 };
 
 /* The detector's English labels in German; an unknown label is shown as it came. */
@@ -70,6 +70,21 @@ static const char *const LABEL_DE[][2] = {
 #define BOX_EDGE 3             // ui/make_scene.py EDGE
 #define BOX_MIN 16             // ui/make_scene.py BOX_MIN
 #define PILL_MAX 150           // ui/make_scene.py PILL_MAX
+#define FRAME_STALE_MS 5000    // no frame for this long: the view waits again, the mode mark shows the mic
+/* The camera light's Auto (chakra_core_set_frame_luma): on after the picture's mean luma stayed
+ * below LUMA_DARK for LIGHT_SWITCH_MS. The light brightens the picture itself, so it goes off again
+ * only after LIGHT_MIN_ON_MS and once the luma is LUMA_BRIGHTER above what it was with the light
+ * alone (measured LIGHT_BASE_MS after switching on): the room itself got brighter. */
+#define LUMA_DARK 50
+#define LUMA_BRIGHTER 30
+#define LIGHT_SWITCH_MS 2000
+#define LIGHT_MIN_ON_MS 10000
+#define LIGHT_BASE_MS 1000
+/* Material Design Icons, UTF-8: microphone, camera, video, movie (the demo scene). */
+#define I_MIC "\xf3\xb0\x8d\xac"
+#define I_CAMERA "\xf3\xb0\x84\x80"
+#define I_VIDEO "\xf3\xb0\x95\xa7"
+#define I_MOVIE "\xf3\xb0\x8e\x81"
 
 /* The value a setter last sent; see put() below. */
 typedef struct {
@@ -124,6 +139,15 @@ struct chakra_core {
         int x, y, w, h;   // pixels inside the view
     } box[CHAKRA_BOXES];
     char cam_src[48];
+    int src_kind;         // CHAKRA_SOURCE_*
+    uint32_t frame_ms;    // now() of the last frame
+    int luma;             // the last frame's mean luma, -1 unknown
+    bool dark;            // the picture is dark (Auto's view of it)
+    bool auto_lit;        // Auto has the light on
+    bool lit;             // the light as last told to the platform
+    bool lit_told;        // whether it was told at all
+    uint32_t dark_since, bright_since, lit_at;
+    int lit_base;         // the luma with the light alone, -1 until measured
     bool boxes_dirty;     // set_box or clear_boxes since the last tick
     esp_gsp_err_t last_error;
     shadow_t shadow[SHADOW_SLOTS];
@@ -253,6 +277,7 @@ void chakra_settings_defaults(chakra_settings_t *s)
     s->cam_on = 1;
     s->cam_boxes = 1;
     s->cam_fps = 2;
+    s->cam_light = CHAKRA_CAM_LIGHT_AUTO;
 }
 
 void chakra_settings_detect(const chakra_settings_t *s, chakra_detect_config_t *out)
@@ -527,6 +552,10 @@ static void draw_labels(struct chakra_core *c)
     put(c, gsp_chakra_lbl_fps_set_text, T(c, S_FPS));
     put(c, gsp_chakra_lbl_src_set_text, T(c, S_SOURCE));
     put(c, gsp_chakra_lbl_cloud_set_text, T(c, S_CLOUD));
+    put(c, gsp_chakra_lbl_light_set_text, T(c, S_LIGHT));
+    put(c, gsp_chakra_lbl_light_off_set_text, T(c, S_OFF));
+    put(c, gsp_chakra_lbl_light_on_set_text, T(c, S_ON));
+    put(c, gsp_chakra_lbl_light_auto_set_text, T(c, S_AUTO));
     put(c, gsp_chakra_lbl_cloud_off_set_text, T(c, S_OFF));
     put(c, gsp_chakra_lbl_cloud_on_set_text, T(c, S_ON));
 }
@@ -589,9 +618,38 @@ static void draw_page(struct chakra_core *c)
     put(c, gsp_chakra_grp_page_cam_set_visible, c->page == 2);
 }
 
-/* Page 3: camera, boxes, frame rate, source. */
+/* Beside the gear: a microphone while only sound is used, the source's glyph while frames come. */
+static void draw_mode(struct chakra_core *c)
+{
+    const char *glyph = I_MIC;
+    if (c->s.cam_on && c->picture) {
+        glyph = c->src_kind == CHAKRA_SOURCE_VIDEO ? I_VIDEO : c->src_kind == CHAKRA_SOURCE_DEMO ? I_MOVIE : I_CAMERA;
+    }
+    put(c, gsp_chakra_mode_icon_set_text, glyph);
+}
+
+/* The light's state beside its label: "on", "off", "dark · on". */
+static void draw_light_state(struct chakra_core *c)
+{
+    char text[40];
+    if (c->dark && c->s.cam_on) {
+        snprintf(text, sizeof(text), "%s · %s", T(c, S_DARK), T(c, c->lit ? S_LIT : S_UNLIT));
+    } else {
+        snprintf(text, sizeof(text), "%s", T(c, c->lit ? S_LIT : S_UNLIT));
+    }
+    put(c, gsp_chakra_light_state_set_text, text);
+}
+
+/* Page 3: camera, boxes, frame rate, light, Cloud AI, source. */
 static void draw_camera_page(struct chakra_core *c)
 {
+    put(c, gsp_chakra_light_off_set_color_rgb888, c->s.cam_light == CHAKRA_CAM_LIGHT_OFF ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_light_on_set_color_rgb888, c->s.cam_light == CHAKRA_CAM_LIGHT_ON ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_light_auto_set_color_rgb888, c->s.cam_light == CHAKRA_CAM_LIGHT_AUTO ? ON_RGB : OFF_RGB);
+    draw_light_state(c);
+    put(c, gsp_chakra_src_icon_set_text, c->src_kind == CHAKRA_SOURCE_VIDEO  ? I_VIDEO
+                                         : c->src_kind == CHAKRA_SOURCE_DEMO ? I_MOVIE
+                                                                             : I_CAMERA);
     put(c, gsp_chakra_cam_off_set_color_rgb888, c->s.cam_on ? OFF_RGB : ON_RGB);
     put(c, gsp_chakra_cam_on_set_color_rgb888, c->s.cam_on ? ON_RGB : OFF_RGB);
     put(c, gsp_chakra_boxes_off_set_color_rgb888, c->s.cam_boxes ? OFF_RGB : ON_RGB);
@@ -656,6 +714,57 @@ static void draw_settings(struct chakra_core *c)
     put(c, gsp_chakra_ai_on_set_color_rgb888, c->s.ai ? ON_RGB : OFF_RGB);
     put(c, gsp_chakra_lang_en_set_color_rgb888, c->s.lang == CHAKRA_LANG_EN ? ON_RGB : OFF_RGB);
     put(c, gsp_chakra_lang_de_set_color_rgb888, c->s.lang == CHAKRA_LANG_DE ? ON_RGB : OFF_RGB);
+}
+
+// ------------------------------------------------------------------ camera light --
+
+/* Tells the platform when the light should change: Off, On, or Auto's verdict, never with the
+ * camera off. */
+static void apply_light(struct chakra_core *c)
+{
+    const bool want = c->s.cam_on && (c->s.cam_light == CHAKRA_CAM_LIGHT_ON ||
+                                      (c->s.cam_light == CHAKRA_CAM_LIGHT_AUTO && c->auto_lit));
+    if (!c->lit_told || want != c->lit) {
+        c->lit = want;
+        c->lit_told = true;
+        if (c->cfg.on_cam_light) {
+            c->cfg.on_cam_light(want, c->dark, c->cfg.ctx);
+        }
+    }
+    draw_light_state(c);
+}
+
+/* Auto from the frames' luma, with hysteresis (LUMA_DARK and the lines below it). */
+static void auto_light(struct chakra_core *c, int luma)
+{
+    const uint32_t t = now(c) ? now(c) : 1;
+    if (!c->auto_lit) {
+        c->dark = luma < LUMA_DARK;
+        c->bright_since = 0;
+        if (!c->dark) {
+            c->dark_since = 0;
+        } else if (!c->dark_since) {
+            c->dark_since = t;
+        } else if (t - c->dark_since >= LIGHT_SWITCH_MS) {
+            c->auto_lit = true;
+            c->lit_at = t;
+            c->lit_base = -1;
+        }
+        return;
+    }
+    if (c->lit_base < 0 && t - c->lit_at >= LIGHT_BASE_MS) {
+        c->lit_base = luma;  // the picture with the light alone
+    }
+    const bool brighter = c->lit_base >= 0 && luma > c->lit_base + LUMA_BRIGHTER && luma >= LUMA_DARK;
+    if (!brighter || t - c->lit_at < LIGHT_MIN_ON_MS) {
+        c->bright_since = 0;
+    } else if (!c->bright_since) {
+        c->bright_since = t;
+    } else if (t - c->bright_since >= LIGHT_SWITCH_MS) {
+        c->auto_lit = false;
+        c->dark = false;
+        c->dark_since = 0;
+    }
 }
 
 static void settings_changed(struct chakra_core *c)
@@ -925,10 +1034,15 @@ static void on_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void *ct
         c->s.cam_on = gsp_chakra_event_is_cam_on(event) ? 1 : 0;
         if (!c->s.cam_on) {
             c->picture = false;  // the old frame goes with the camera; the next one comes fresh
+            c->auto_lit = false;
+            c->dark = false;
+            c->dark_since = 0;
         }
         settings_changed(c);
         draw_view(c);
         draw_boxes(c);
+        draw_mode(c);
+        apply_light(c);
         haptic(c, 1);
     } else if (gsp_chakra_event_is_boxes_off(event) || gsp_chakra_event_is_boxes_on(event)) {
         c->s.cam_boxes = gsp_chakra_event_is_boxes_on(event) ? 1 : 0;
@@ -938,6 +1052,14 @@ static void on_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void *ct
     } else if (gsp_chakra_event_is_fps_1(event) || gsp_chakra_event_is_fps_2(event) || gsp_chakra_event_is_fps_4(event)) {
         c->s.cam_fps = gsp_chakra_event_is_fps_1(event) ? 1 : gsp_chakra_event_is_fps_4(event) ? 4 : 2;
         settings_changed(c);
+        haptic(c, 1);
+    } else if (gsp_chakra_event_is_light_off(event) || gsp_chakra_event_is_light_on(event) ||
+               gsp_chakra_event_is_light_auto(event)) {
+        c->s.cam_light = gsp_chakra_event_is_light_off(event)  ? CHAKRA_CAM_LIGHT_OFF
+                         : gsp_chakra_event_is_light_on(event) ? CHAKRA_CAM_LIGHT_ON
+                                                               : CHAKRA_CAM_LIGHT_AUTO;
+        settings_changed(c);
+        apply_light(c);
         haptic(c, 1);
     } else if (gsp_chakra_event_is_cloud_off(event) || gsp_chakra_event_is_cloud_on(event)) {
         c->s.cam_cloud = gsp_chakra_event_is_cloud_on(event) ? 1 : 0;  // the platform decides what it may do
@@ -1011,6 +1133,7 @@ static void on_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void *ct
         draw_view(c);
         draw_boxes(c);
         draw_heard(c);
+        draw_light_state(c);
         settings_changed(c);
         haptic(c, 1);
     }
@@ -1074,6 +1197,12 @@ static void tick(esp_gsp_handle_t ui, void *ctx)
     }
     if (c->ticks % 3 == 0) {
         draw_heard(c);  // an AI verdict ages out after HEARD_MS
+    }
+    if (c->picture && c->ticks % 12 == 0 && now(c) - c->frame_ms > FRAME_STALE_MS) {
+        c->picture = false;  // the source stopped: the view waits again, the mark shows the microphone
+        draw_view(c);
+        draw_boxes(c);
+        draw_mode(c);
     }
     if (c->boxes_dirty) {
         c->boxes_dirty = false;
@@ -1161,10 +1290,14 @@ bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t s
     }
     const esp_gsp_err_t e = gsp_chakra_cam_img_set_image(c->ui, data, size);
     err(c, e);
-    if (e == ESP_GSP_OK && !c->picture) {
-        c->picture = true;
-        draw_view(c);
-        draw_boxes(c);
+    if (e == ESP_GSP_OK) {
+        c->frame_ms = now(c) ? now(c) : 1;
+        if (!c->picture) {
+            c->picture = true;
+            draw_view(c);
+            draw_boxes(c);
+            draw_mode(c);
+        }
     }
     return e == ESP_GSP_OK;
 }
@@ -1201,12 +1334,25 @@ void chakra_core_clear_boxes(chakra_core_handle_t c)
     c->boxes_dirty = true;  // the boxes that come back with this frame are not hidden first
 }
 
-void chakra_core_set_camera_source(chakra_core_handle_t c, const char *text)
+void chakra_core_set_camera_source(chakra_core_handle_t c, int kind, const char *text)
 {
     if (c) {
+        c->src_kind = kind;
         snprintf(c->cam_src, sizeof(c->cam_src), "%s", text ? text : "");
         put(c, gsp_chakra_cam_src_set_text, c->cam_src);
+        draw_camera_page(c);
+        draw_mode(c);
     }
+}
+
+void chakra_core_set_frame_luma(chakra_core_handle_t c, int luma)
+{
+    if (!c || luma < 0 || !c->s.cam_on) {
+        return;
+    }
+    c->luma = luma > 255 ? 255 : luma;
+    auto_light(c, c->luma);
+    apply_light(c);
 }
 
 void chakra_core_set_clock(chakra_core_handle_t c, const char *hhmm)
@@ -1278,12 +1424,19 @@ esp_gsp_err_t chakra_core_create(esp_gsp_handle_t ui, const chakra_core_config_t
     c->s.cam_on = c->s.cam_on ? 1 : 0;
     c->s.cam_boxes = c->s.cam_boxes ? 1 : 0;
     c->s.cam_cloud = c->s.cam_cloud ? 1 : 0;
+    if (c->s.cam_light < CHAKRA_CAM_LIGHT_OFF || c->s.cam_light > CHAKRA_CAM_LIGHT_AUTO) {
+        c->s.cam_light = CHAKRA_CAM_LIGHT_AUTO;
+    }
+    c->luma = -1;
+    c->lit_base = -1;
     draw_labels(c);
     draw_chakra(c, -1);
     draw_settings(c);
     draw_view(c);
     draw_boxes(c);
     draw_heard(c);
+    draw_mode(c);
+    apply_light(c);  // the platform learns the light's start state (off: no dark picture yet)
     esp_gsp_err_t e = esp_gsp_on_event(ui, on_event, c);
     if (e == ESP_GSP_OK) {
         e = esp_gsp_set_pointer_observer(ui, on_pointer, c);

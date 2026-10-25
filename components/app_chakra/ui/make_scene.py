@@ -56,6 +56,7 @@ BARS = 8                 # the small spectrum below the view: the detection's 16
 # waveform (heard), eye-outline (seen), camera, camera-off
 COG, HA, BULB, WIFI, BT, CHECK, MONITOR = 0xF0493, 0xF07D0, 0xF0335, 0xF05A9, 0xF00AF, 0xF05E0, 0xF0379
 WAVE, EYE, CAMERA, CAMERA_OFF, CLOUD = 0xF147D, 0xF06D0, 0xF0100, 0xF05DF, 0xF0163
+MIC, VIDEO, FLASH, MOVIE = 0xF036C, 0xF0567, 0xF0241, 0xF0381  # microphone, video, flash, movie (demo)
 ON, OFF = "#6E5ACF", "#3A3744"  # DESIGN.md: chosen, not chosen
 LAMPS = 4  # rows in the lamp list; chakra_core.h CHAKRA_LAMPS
 SLIDERS = [("bright", "Brightness", 10, 100, 60), ("hue", "Colour", 0, 359, 0), ("sens", "Sensitivity", 1, 10, 8),
@@ -70,7 +71,8 @@ STRINGS = [
     "Ready", "Strike a bowl or hum", " ct", "+", ".", ",", "Bereit", "Schale anschlagen", "Hz", "dB", "%", " s", " · ",
     "Settings", "Einstellungen", "Connections", "Anbindungen", "Camera", "Kamera", "Auto", "Colour", "Farbe", "°",
     "Local AI sound gate", "Lokaler KI-Klangfilter", "Off", "On", "Aus", "An", "Boxes", "Boxen", "Frame rate", "Bildrate", "fps",
-    "Source", "Quelle", "Cloud AI", "Cloud-KI", "beta", "cloud stub", "Mac camera", "Mac-Kamera", "No camera yet", "Noch keine Kamera", "Waiting for camera",
+    "Source", "Quelle", "Cloud AI", "Cloud-KI", "beta", "cloud stub", "Light", "Licht", "dark", "dunkel",
+    "Video", "Demo scene", "Demo-Szene", "Mac camera", "Mac-Kamera", "No camera yet", "Noch keine Kamera", "Waiting for camera",
     "Warte auf Kamera", "Camera off", "Kamera aus", "Bowl", "Schale", "Other", "Anderes", "Quiet", "Still", "Tone",
     "Ton", "Nothing", "Nichts", "Boxes off", "Boxen aus", "Singing bowl", "Klangschale", "Tuning fork", "Stimmgabel",
     "Gong", "Drum", "Trommel", "Chimes", "Klangspiel", "Hand",
@@ -212,8 +214,12 @@ def top_bar():
     add("label", None, None, x=FRAME + 14, y=y + 8, w=150, h=40, text="ChakraV", font_size=30, font=XBOLD,
         fg_color=WHITE)
     text("clock", None, 165, y + 10, 150, 36, 28, BOLD, WHITE, align="center", sample="12:00", overflow="clip")
-    add("container", "conn_dot", None, x=480 - FRAME - 74, y=y + 20, w=12, h=12, radius=6, bg_color=ORANGE,
-        bind="conn_dot", bind_target="color")
+    # The mode at a glance (owner 25.10.2026): a microphone while only sound is used, a camera or a
+    # film strip while a camera or a video feeds the view; the connection colour as a badge dot on it.
+    text("mode_icon", None, 480 - FRAME - 88, y + 12, 28, 28, 26, ICONS, WHITE, align="center", sample=chr(MIC),
+         charset=ICON_CHARSET)
+    add("container", "conn_dot", None, x=480 - FRAME - 68, y=y + 30, w=12, h=12, radius=6, bg_color=ORANGE,
+        border_color=PANEL, border_width=2, bind="conn_dot", bind_target="color")
     add("button", "gear", None, x=480 - FRAME - 54, y=y + 2, w=48, h=48, radius=24, bg_opacity=0, callback="gear")
     icon("gear", 7, 7, 34, COG)
 
@@ -303,28 +309,36 @@ def settings():
     text("lamp_url", "grp_url", 12, 52, pw - 24, 44, 32, XBOLD, WHITE, align="center", sample="192.168.1.20:3310",
          overflow="ellipsis")
 
-    # Page 3, Camera: on or off, boxes on or off, the frame rate; the source as one quiet line.
+    # Page 3, Camera: on or off, boxes, the frame rate, the camera's light, the experimental Cloud AI
+    # (a vision model with the user's own key, only on the Mac for now: tools/cloud_vision.py, a stub
+    # that sends nothing in v0); the source as one quiet line with its glyph.
     group("grp_page_cam", "grp_settings", 0, 0, W, 480)
-    # Cloud AI (experimental, off by default): a vision model with the user's own key, only on the
-    # Mac for now (tools/cloud_vision.py, a stub that sends nothing in v0).
     rows = [("cam", "Camera", [("cam_off", "Off"), ("cam_on", "On")]),
             ("boxes", "Boxes", [("boxes_off", "Off"), ("boxes_on", "On")]),
             ("fps", "Frame rate", [("fps_1", "1"), ("fps_2", "2"), ("fps_4", "4")]),
+            ("light", "Light", [("light_off", "Off"), ("light_on", "On"), ("light_auto", "Auto")]),
             ("cloud", "Cloud AI", [("cloud_off", "Off"), ("cloud_on", "On")])]
+    step = 52
     for i, (key, label, opts) in enumerate(rows):
-        y = 50 + i * 56
-        add("container", None, "grp_page_cam", x=lx, y=y, w=pw, h=48, radius=18, bg_color=TILE)
-        icon("grp_page_cam", lx + 14, y + 12, 24, {"cam": CAMERA, "boxes": 0xF0485, "fps": WAVE, "cloud": CLOUD}[key],
-             color=MUTED)
-        text(f"lbl_{key}", "grp_page_cam", lx + 48, y + 14, 150, 20, 15, BOLD, WHITE, sample=label, overflow="ellipsis")
-        bw = 62 if len(opts) == 2 else 48
+        y = 50 + i * step
+        add("container", None, "grp_page_cam", x=lx, y=y, w=pw, h=step - 6, radius=18, bg_color=TILE)
+        icon("grp_page_cam", lx + 14, y + 11, 24, {"cam": CAMERA, "boxes": 0xF0485, "fps": WAVE, "light": FLASH,
+                                                     "cloud": CLOUD}[key], color=MUTED)
+        text(f"lbl_{key}", "grp_page_cam", lx + 48, y + 13, 150, 20, 15, BOLD, WHITE, sample=label, overflow="ellipsis")
+        bw = 62 if len(opts) == 2 else 54 if key == "light" else 48
         for j, (b, lab) in enumerate(opts):
-            option(b, "grp_page_cam", lx + pw - 8 - len(opts) * (bw + 4) + 4 + j * (bw + 4), y + 9, bw, 30,
-                   lab, chosen=(b in ("cam_on", "boxes_on", "fps_2", "cloud_off")))
-    text("lbl_fps_unit", "grp_page_cam", lx + 48 + 92, 50 + 2 * 56 + 15, 40, 20, 13, MED, MUTED, sample="fps")
-    text("lbl_cloud_beta", "grp_page_cam", lx + 48 + 76, 50 + 3 * 56 + 16, 90, 18, 12, BOLD, ORANGE, sample="beta")
-    text("lbl_src", "grp_page_cam", lx + 4, 284, 90, 20, 14, BOLD, MUTED, sample="Source")
-    text("cam_src", "grp_page_cam", lx + 94, 284, pw - 98, 20, 14, BOLD, WHITE, align="right",
+            option(b, "grp_page_cam", lx + pw - 8 - len(opts) * (bw + 4) + 4 + j * (bw + 4), y + 8, bw, 30,
+                   lab, chosen=(b in ("cam_on", "boxes_on", "fps_2", "light_auto", "cloud_off")), size=14)
+    text("lbl_fps_unit", "grp_page_cam", lx + 48 + 92, 50 + 2 * step + 14, 40, 20, 13, MED, MUTED, sample="fps")
+    # The light's state beside its label: "on", "off", "dark · on" (Auto saw a dark picture).
+    text("light_state", "grp_page_cam", lx + 48 + 52, 50 + 3 * step + 14, 96, 18, 13, BOLD, ORANGE,
+         sample="dark · on", overflow="ellipsis")
+    text("lbl_cloud_beta", "grp_page_cam", lx + 48 + 76, 50 + 4 * step + 15, 90, 18, 12, BOLD, ORANGE, sample="beta")
+    y = 50 + 5 * step + 8
+    text("lbl_src", "grp_page_cam", lx + 4, y, 90, 20, 14, BOLD, MUTED, sample="Source")
+    text("src_icon", "grp_page_cam", lx + 64, y - 1, 22, 22, 20, ICONS, MUTED, align="center", sample=chr(CAMERA),
+         charset=ICON_CHARSET)
+    text("cam_src", "grp_page_cam", lx + 138, y, pw - 142, 20, 14, BOLD, WHITE, align="right",
          sample="Mac camera · 368 × 276", overflow="ellipsis")
 
 
@@ -367,7 +381,8 @@ def main():
         chars.update(s)
     (HERE / CHARSET).write_text("".join(sorted(chars)), encoding="utf-8")
     (HERE / ICON_CHARSET).write_text("".join(chr(c) for c in (COG, HA, BULB, WIFI, BT, CHECK, MONITOR, WAVE, EYE,
-                                                              CAMERA, CAMERA_OFF, 0xF0485, CLOUD)), encoding="utf-8")
+                                                              CAMERA, CAMERA_OFF, 0xF0485, CLOUD, MIC, VIDEO, FLASH, MOVIE)),
+                                     encoding="utf-8")
     (HERE / "main.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"main.json: {len(doc['objects'])} objects, frame {FRAME} px; charset.txt: {len(chars)} characters")
 

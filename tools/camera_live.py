@@ -5,8 +5,9 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
       scales and crops each to the view's exact size (368 x 276, chakra_core.h CHAKRA_CAM_W/H),
       writes it as a JPEG to one temp file that every frame overwrites, and tells the app on its
       line port (127.0.0.1:8711, CHAKRA_AI_PORT):
-        source<TAB><text>                         once: the Camera page's source line
-        frame<TAB><path>                          per frame; the app reads the file at once
+        source<TAB><text><TAB><camera|video|demo> once: the Camera page's source line, the mode mark
+        frame<TAB><path><TAB><luma>               per frame; the app reads the file at once, the mean
+                                                  luma (0..255) drives the camera light's Auto
         boxes<TAB>clear, then box<TAB><label><TAB><x><TAB><y><TAB><w><TAB><h><TAB><conf>
                                                   per frame with marks, normalised 0..1
       It follows the app's Camera settings, which come back on the same socket as
@@ -89,6 +90,10 @@ class App:
             while b"\n" in buf:
                 line, buf = buf.split(b"\n", 1)
                 f = line.decode(errors="replace").split("\t")
+                if len(f) == 3 and f[0] == "camlight":
+                    # The Mac's camera has no light to switch; on the board this is the flash LED.
+                    print(f"camera light {'on' if f[1] == '1' else 'off'}"
+                          f"{' (the picture is dark)' if f[2] == '1' else ''}", flush=True)
                 if len(f) >= 4 and f[0] == "camera":
                     on, boxes, fps = f[1] == "1", f[2] == "1", int(f[3]) if f[3] in ("1", "2", "4") else 2
                     cloud = len(f) >= 5 and f[4] == "1"
@@ -221,6 +226,20 @@ def jpeg_frames(proc: subprocess.Popen):
             buf = buf[end + 2:]
 
 
+def frame_stats(jpeg: bytes) -> tuple[int, int]:
+    """Mean luma and contrast (the luma's standard deviation), 0..255, of a JPEG; (-1, -1) without
+    Pillow. Shared with tools/check_frames.py."""
+    try:
+        from io import BytesIO
+
+        from PIL import Image, ImageStat
+    except ImportError:
+        return -1, -1
+    with Image.open(BytesIO(jpeg)) as im:
+        st = ImageStat.Stat(im.convert("L"))
+    return int(st.mean[0] + 0.5), int(st.stddev[0] + 0.5)
+
+
 def cloud_key() -> bool:
     return any(os.environ.get(k, "").strip() for k in ("OPENAI_API_KEY", "GEMINI_API_KEY"))
 
@@ -229,7 +248,7 @@ def send_frame(app: App, files: FrameFile, jpeg: bytes, boxes) -> None:
     if app.cloud and cloud_key():  # EXPERIMENTAL: both switched on and a key; v0 sends nothing out
         import cloud_vision
         boxes = cloud_vision.ask(jpeg) or boxes
-    lines = f"frame\t{files.write(jpeg)}\n"
+    lines = f"frame\t{files.write(jpeg)}\t{frame_stats(jpeg)[0]}\n"
     if app.boxes and boxes is not None:
         lines += "boxes\tclear\n" + "".join(
             f"box\t{label}\t{x:.3f}\t{y:.3f}\t{w:.3f}\t{h:.3f}\t{c:.2f}\n" for label, x, y, w, h, c in boxes[:4])
@@ -308,7 +327,9 @@ def main():
     if not a.demo and not shutil.which("ffmpeg"):
         sys.exit("ffmpeg missing: brew install ffmpeg")
     app = App(a.port, a.wait)
-    app.send(f"source\t{source} · {W} × {H}" + (" · cloud stub" if cloud_key() else "") + "\n")
+    kind = "demo" if a.demo else "video" if a.video else "camera"
+    size = "" if a.video else f" · {W} × {H}"  # a video's name is long enough for the line
+    app.send(f"source\t{source}{size}" + (" · cloud stub" if cloud_key() else "") + f"\t{kind}\n")
     files = FrameFile()
     print(f"{source} to 127.0.0.1:{a.port}; Ctrl-C stops", flush=True)
     try:

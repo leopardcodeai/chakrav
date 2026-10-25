@@ -68,7 +68,17 @@ typedef struct {
     int cam_boxes;     // 1 (default): instrument marks over the view
     int cam_fps;       // frames a second: 1, 2 (default) or 4
     int cam_cloud;     // 1: experimental Cloud AI (a vision model with the user's own key); 0 (default): off
+    /* Added 25.10.2026 (main.c SETTINGS_VERSION 6). */
+    int cam_light;     // the camera's light: CHAKRA_CAM_LIGHT_AUTO (default), _OFF or _ON
 } chakra_settings_t;
+
+/* The camera's light (the module's flash LED on the board). Auto lights it while the picture is
+ * dark: the frame's mean luma below LUMA_DARK for 2 s; off again once it is clearly brighter than
+ * with the light alone (chakra_core.c, "camera light"). */
+enum { CHAKRA_CAM_LIGHT_OFF, CHAKRA_CAM_LIGHT_ON, CHAKRA_CAM_LIGHT_AUTO };
+
+/* What feeds the view, for the mode mark beside the gear and the Camera page's source line. */
+enum { CHAKRA_SOURCE_NONE, CHAKRA_SOURCE_CAMERA, CHAKRA_SOURCE_VIDEO, CHAKRA_SOURCE_DEMO };
 
 typedef struct chakra_core *chakra_core_handle_t;
 
@@ -89,6 +99,9 @@ typedef void (*chakra_haptic_cb_t)(int pattern, void *ctx);
  *  late tick cannot stretch the 3 s, and each tick's optional drawing (the fade, the tuning ring,
  *  the note line, the spectrum) stops once half the tick has passed. Must not block. */
 typedef uint32_t (*chakra_clock_cb_t)(void *ctx);
+/** The camera's light should now be on or off (Off, On, or Auto's verdict); dark: the picture is
+ *  dark by the luma the platform reported. The platform switches the LED. */
+typedef void (*chakra_cam_light_cb_t)(bool on, bool dark, void *ctx);
 
 typedef struct {
     chakra_poll_cb_t poll;
@@ -97,6 +110,7 @@ typedef struct {
     chakra_close_cb_t on_close;         // optional
     chakra_haptic_cb_t on_haptic;       // optional
     chakra_clock_cb_t now_ms;           // optional; without it the gesture counts its timer's ticks
+    chakra_cam_light_cb_t on_cam_light; // optional
     chakra_settings_t settings;         // shown at start
     void *ctx;
 } chakra_core_config_t;
@@ -132,8 +146,12 @@ void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, f
                          float confidence);
 /** Hides every mark (the detector sees nothing, or its frame is older than the picture). */
 void chakra_core_clear_boxes(chakra_core_handle_t c);
-/** The camera's source as one quiet line on the Camera page: "Mac camera · 368 × 276", "No camera yet". */
-void chakra_core_set_camera_source(chakra_core_handle_t c, const char *text);
+/** The camera's source: kind (CHAKRA_SOURCE_*) for the mode mark, text as one quiet line on the
+ *  Camera page ("Mac camera · 368 × 276", "Video Gong.webm", "No camera yet"). */
+void chakra_core_set_camera_source(chakra_core_handle_t c, int kind, const char *text);
+/** The last frame's mean luma 0..255 (Rec. 601 Y), measured where the pixels are; drives the
+ *  light's Auto. Call it after chakra_core_set_frame, -1 when unknown. */
+void chakra_core_set_frame_luma(chakra_core_handle_t c, int luma);
 
 #ifdef __cplusplus
 }

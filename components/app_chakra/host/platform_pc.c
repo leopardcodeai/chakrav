@@ -13,12 +13,15 @@
 // Line port (CHAKRA_AI_PORT, default 8711; up to LINE_CLIENTS at once: the AI sound gate through
 // chakra_feed.py --ai and the camera through tools/camera_live.py), in:
 //   sound\t<bowl|other|none>\t<strike 0|1>              the AI sound gate's verdict
-//   frame\t<path>                                        a JPEG of CHAKRA_CAM_W x CHAKRA_CAM_H, read at once
+//   frame\t<path>[\t<luma>]                             a JPEG of CHAKRA_CAM_W x CHAKRA_CAM_H, read at once;
+//                                                        its mean luma 0..255 drives the light's Auto
 //   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>            a mark, normalised 0..1; a frame's boxes follow it
 //   boxes\tclear                                          before each frame's boxes
-//   source\t<text>                                       the Camera page's source line
+//   source\t<text>[\t<camera|video|demo>]                 the Camera page's source line and the mode mark
 // out, to every line client when it connects and on each change of the settings:
 //   camera\t<on 0|1>\t<boxes 0|1>\t<fps 1|2|4>\t<cloud 0|1>
+// and whenever the camera's light should change (Off, On, Auto's verdict):
+//   camlight\t<on 0|1>\t<dark 0|1>      the Mac's camera has no light to switch: camera_live.py reports it
 // 127.0.0.1 only. All socket work is non-blocking and runs in the core's 40 ms tick on the
 // bridge's single thread.
 #include <errno.h>
@@ -153,6 +156,9 @@ static void line_in(char *line)
         chakra_core_set_sound(host.core, k, n >= 3 ? atoi(f[2]) : 0);
     } else if (strcmp(f[0], "frame") == 0 && n >= 2) {
         take_frame(f[1]);
+        if (n >= 3) {
+            chakra_core_set_frame_luma(host.core, atoi(f[2]));
+        }
     } else if (strcmp(f[0], "boxes") == 0) {
         host.box_next = 0;
         chakra_core_clear_boxes(host.core);
@@ -160,7 +166,25 @@ static void line_in(char *line)
         chakra_core_set_box(host.core, host.box_next++, f[1], strtof(f[2], NULL), strtof(f[3], NULL),
                             strtof(f[4], NULL), strtof(f[5], NULL), n >= 7 ? strtof(f[6], NULL) : 1.0f);
     } else if (strcmp(f[0], "source") == 0 && n >= 2) {
-        chakra_core_set_camera_source(host.core, f[1]);
+        const int kind = n < 3 || strcmp(f[2], "camera") == 0 ? CHAKRA_SOURCE_CAMERA
+                         : strcmp(f[2], "video") == 0         ? CHAKRA_SOURCE_VIDEO
+                         : strcmp(f[2], "demo") == 0          ? CHAKRA_SOURCE_DEMO
+                                                              : CHAKRA_SOURCE_NONE;
+        chakra_core_set_camera_source(host.core, kind, f[1]);
+    }
+}
+
+/* The camera's light: logged, and told to the line clients (camera_live.py prints it). */
+static void on_cam_light(bool on, bool dark, void *ctx)
+{
+    (void)ctx;
+    char line[32];
+    snprintf(line, sizeof(line), "camlight\t%d\t%d\n", on ? 1 : 0, dark ? 1 : 0);
+    fprintf(stderr, "chakrav: camera light %s%s\n", on ? "on" : "off", dark ? " (dark picture)" : "");
+    for (int i = 0; i < LINE_CLIENTS; ++i) {
+        if (host.lines[i].fd >= 0) {
+            (void)!write(host.lines[i].fd, line, strlen(line));
+        }
     }
 }
 
@@ -406,7 +430,7 @@ esp_gsp_err_t gsp_bridge_app_init(esp_gsp_handle_t ui)
     const char *ai_env = getenv("CHAKRA_AI_PORT");
     host.ai_listener = listen_loopback(ai_env ? atoi(ai_env) : 8711, "lines (AI sound gate, camera)");
     chakra_core_config_t cfg = {.poll = poll_audio, .on_light = on_light, .on_settings = on_settings,
-                                .on_close = on_close, .now_ms = now_ms};
+                                .on_close = on_close, .now_ms = now_ms, .on_cam_light = on_cam_light};
     chakra_settings_defaults(&cfg.settings);
     host.lamps = cfg.settings.lamps;
     host.settings = cfg.settings;
@@ -439,7 +463,7 @@ esp_gsp_err_t gsp_bridge_app_init(esp_gsp_handle_t ui)
         }
         snprintf(lamps[1].name, sizeof(lamps[1].name), "%s", name && *name ? name : "Living room LED strip");
         chakra_core_set_lamps(host.core, lamps, CHAKRA_LAMPS);
-        chakra_core_set_camera_source(host.core, "No camera yet");  // camera_live.py names its source
+        chakra_core_set_camera_source(host.core, CHAKRA_SOURCE_NONE, "No camera yet");  // camera_live.py names its source
     }
     return e;
 }

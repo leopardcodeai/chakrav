@@ -102,6 +102,9 @@ def main():
             time.sleep(0.5)
         if not url:
             sys.exit("the simulator printed no preview address, see sim.log")
+        time.sleep(1.0)
+        if "cannot listen" in (a.out / "sim.log").read_text(errors="replace"):
+            sys.exit("8710 or 8711 is taken (another ChakraV simulator?): the shots would show the wrong one")
         feeds.append(subprocess.Popen([sys.executable, str(HERE / "tools/chakra_feed.py"), "tone", str(a.hz),
                                        "--seconds", "40", "--wait", "--port", "8710"], env=env,
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
