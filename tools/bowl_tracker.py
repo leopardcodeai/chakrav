@@ -45,7 +45,9 @@ MISS_LIMIT = 40     # frames (20 s at 2 fps) a bowl may go unfound before it is 
 REDETECT = 4        # frames between detections while the scene is still
 SCENE_CUT = 25.0    # mean change of the whole picture (0..255) that means the camera moved
 MOTION = 14.0       # mean change inside a box that counts as moving
-LEAD = 0.8          # ... and only for the box that moves most, or nearly as much
+LEAD = 0.8
+SPIKE, SPIKE_MIN = 2.5, 5.0  # ... or 2.5 times the box's usual motion and over 5: a stick struck gently
+QUIET_EMA = 0.1              # (a YouTube tune-up, 26.10.2026: strikes moved a big bowl's box by 4 to 8)          # ... and only for the box that moves most, or nearly as much
 EMA = 0.3           # how fast a box follows a new detection
 CONFIRM = 2         # detections before a track is shown
 SEEN_OF = 8         # the percent on a mark: found in how many of the last 8 detections
@@ -83,7 +85,8 @@ class Track:
         self.hits, self.missed = 1, 0
         self.found = [1]  # the last SEEN_OF detections: 1 found, 0 missed
         self.motion = [0.0] * ONSET_FRAMES
-        self.touch = [0] * ONSET_FRAMES  # 1 where a hand or mallet covered it, the last ONSET_FRAMES frames
+        self.touch = [0] * ONSET_FRAMES
+        self.quiet = None  # the box's usual motion (EMA), so a short spike shows a gentle strike  # 1 where a hand or mallet covered it, the last ONSET_FRAMES frames
         self.votes = [0] * len(NOTES)
 
     @property
@@ -222,6 +225,8 @@ class Tracker:
             t.missed += 1  # frames since it was last found; update() sets it back to 0
         for t, m in zip(self.tracks, motions):
             t.motion = t.motion[1:] + [m]
+            t.spike = t.quiet is not None and m > SPIKE_MIN and m > SPIKE * t.quiet
+            t.quiet = m if t.quiet is None else t.quiet + QUIET_EMA * (min(m, 2 * t.quiet + 1) - t.quiet)
         shown = [t for t in self.tracks if t.hits >= CONFIRM]
         players = [t for t in shown if t.label in PLAYERS]
         marks = []
@@ -246,7 +251,7 @@ class Tracker:
                 continue
             played = 0
             if t.label not in PLAYERS:
-                moving = t.motion[-1] > MOTION and t.motion[-1] >= LEAD * top
+                moving = (t.motion[-1] > MOTION and t.motion[-1] >= LEAD * top) or getattr(t, "spike", False)
                 touched = id(t) in touched_ids
                 sounding = t.chakra >= 0 and t.chakra == heard
                 played = 1 if moving or touched or sounding else 0
