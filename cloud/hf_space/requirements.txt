@@ -1,0 +1,6 @@
+transformers>=4.46
+torch
+pillow
+spaces
+scipy
+timm
