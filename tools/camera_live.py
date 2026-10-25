@@ -292,7 +292,7 @@ def send_frame(app: App, files: FrameFile, jpeg: bytes, boxes) -> None:
     if app.boxes and boxes is not None:
         lines += "boxes\tclear\n" + "".join(
             f"box\t{b[0]}\t{b[1]:.3f}\t{b[2]:.3f}\t{b[3]:.3f}\t{b[4]:.3f}\t{b[5]:.2f}"
-            + (f"\t{int(b[6])}" if len(b) > 6 else "") + "\n" for b in boxes[:4])
+            + (f"\t{int(b[6])}" if len(b) > 6 else "") + "\n" for b in boxes[:7])
     app.send(lines)
 
 
