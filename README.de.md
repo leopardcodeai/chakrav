@@ -2,7 +2,7 @@
 
 **Chakra mit Video: die Klangschale hören, den Raum sehen, ihn in der Farbe des Chakras leuchten lassen.**
 
-ChakraV ist das experimentelle Geschwister von **[ChakraA (Chakra Detection)](https://github.com/leopardcodeai/chakra-detection)**, der Audio-App,
+ChakraV ist das experimentelle Geschwister von **[ChakraA](https://github.com/leopardcodeai/chakraa)**, der Audio-App,
 für Espressifs [ESP-Mosaico](https://mosaico.espressif.com) (ESP32-S31, 2,16" Touchscreen 480 x 480, Mikrofon,
 Kamerasteckplatz). Chakra hört eine Klangschale und färbt den Raum. ChakraV nimmt eine Kamera dazu, um zu
 sehen, was möglich ist: ein breiter Rahmen um den Bildschirm leuchtet in der Farbe des gehörten Chakras, das
@@ -12,12 +12,12 @@ sie sieht. Englische Fassung (Quelle): [README.md](README.md).
 ## Welche App?
 
 Es gibt zwei Apps aus demselben Code. Im Yoga und in der Klangarbeit wollen viele Menschen gar keine KI oder
-nur KI, die im Raum bleibt: **[ChakraA](https://github.com/leopardcodeai/chakra-detection) ist dafür
+nur KI, die im Raum bleibt: **[ChakraA](https://github.com/leopardcodeai/chakraa) ist dafür
 gebaut.** Sie läuft ohne jede KI, ihre einzige KI-Funktion läuft lokal auf dem Gerät, und sie hat keine Kamera
 und keine Cloud. **ChakraV ist ausdrücklich die experimentelle**: sie probiert aus, was eine Kamera und größere
 Modelle bringen.
 
-| | [ChakraA](https://github.com/leopardcodeai/chakra-detection) (Audio) | ChakraV (diese) |
+| | [ChakraA](https://github.com/leopardcodeai/chakraa) (Audio) | ChakraV (diese) |
 |---|---|---|
 | Hört | Mikrofon | Mikrofon und Kamera |
 | KI | keine nötig; ein optionaler lokaler KI-Klangfilter, nur auf dem Gerät | so viel auf dem Gerät, wie der ESP32-S31 schafft, dazu optional Cloud-Modelle mit eigenem API-Schlüssel |

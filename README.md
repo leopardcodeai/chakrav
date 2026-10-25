@@ -2,7 +2,7 @@
 
 **Chakra with video: hear the bowl, see the room, light it in the chakra's colour.**
 
-ChakraV is the experimental sibling of **[ChakraA (Chakra Detection)](https://github.com/leopardcodeai/chakra-detection)**, the audio app,
+ChakraV is the experimental sibling of **[ChakraA](https://github.com/leopardcodeai/chakraa)**, the audio app,
 for Espressif's [ESP-Mosaico](https://mosaico.espressif.com) (ESP32-S31, 2.16" 480 x 480 touch screen,
 microphone, camera slot). Chakra hears a singing bowl and colours the room. ChakraV adds a camera to see
 what is possible: a thick frame around the screen glows in the colour of the chakra it hears, the live
@@ -12,11 +12,11 @@ German: [README.de.md](README.de.md).
 ## Which one?
 
 There are two apps, from the same code. In yoga and sound healing many people want no AI at all, or only
-AI that stays in the room: **[ChakraA](https://github.com/leopardcodeai/chakra-detection) is built for
+AI that stays in the room: **[ChakraA](https://github.com/leopardcodeai/chakraa) is built for
 that.** It works without any AI, its one AI feature runs locally on the device, and it has no camera and
 no cloud. **ChakraV is explicitly the experimental one**: it tries what a camera and bigger models can add.
 
-| | [ChakraA](https://github.com/leopardcodeai/chakra-detection) (audio) | ChakraV (this one) |
+| | [ChakraA](https://github.com/leopardcodeai/chakraa) (audio) | ChakraV (this one) |
 |---|---|---|
 | Listens | microphone | microphone and camera |
 | AI | none needed; an optional local AI sound gate, on the device only | as much on the device as the ESP32-S31 runs, plus optional cloud models with your own API key |
