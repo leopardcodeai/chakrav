@@ -60,6 +60,7 @@ SHOW_STEADY = 0.25  # a track found in fewer than a quarter of the last detectio
 PLAYERS = {"Mallet", "Hand"}  # these play an instrument they are on; tracked only where last seen
 BLOCKERS = {"Foot", "Leg", "Head"}  # a "bowl" found on one of these is that, not a bowl (a foot was, 25.10.2026)
 HIDDEN = {"Hand"} | BLOCKERS  # helpers, never drawn
+PLAYER_MOVE = 5.0   # a hand or mallet box must change this much (0..255) to count as playing
 TOUCH = 0.15        # a player covering this share of a bowl touches it (the bowl it covers most)
 DUPLICATE = 0.75    # two tracks of one label whose overlap covers this share of the smaller are one
 INSTRUMENTS = {"Singing bowl", "Gong", "Drum", "Tuning fork", "Chimes", "Rainstick"}
@@ -235,6 +236,10 @@ class Tracker:
         # A hand or a mallet touches the one bowl it covers most, not every box it grazes.
         touched_ids = set()
         for p in players:
+            # A mallet lying on a bowl plays nothing: only a moving hand or mallet counts (a tune-up video
+            # had its mallet resting on a bowl, and that bowl was "played" in 86 % of frames, 26.10.2026).
+            if p.motion[-1] <= PLAYER_MOVE:
+                continue
             cover = [(inter(p.box, t.box) / (t.box[2] * t.box[3] + 1e-9), id(t)) for t in shown if t.label not in PLAYERS]
             if cover and max(cover)[0] > TOUCH:
                 touched_ids.add(max(cover)[1])
@@ -348,8 +353,13 @@ def self_test() -> None:
     for _ in range(3):  # one bowl found twice, and a hand on it
         tr.detections([("Singing bowl", 0.3, 0.3, 0.2, 0.2, 0.4), ("Singing bowl", 0.31, 0.3, 0.2, 0.24, 0.3),
                        ("Singing bowl", 0.7, 0.3, 0.2, 0.2, 0.3), ("Hand", 0.35, 0.35, 0.1, 0.1, 0.3)])
-        m = tr.step([0.0] * len(tr.tracks), -1)
+        m = tr.step([10.0 if t.label == "Hand" else 0.0 for t in tr.tracks], -1)  # the hand moves
     assert len(m) == 2 and [x[6] for x in m] == [1, 0] and m[0][1] < 0.5, m  # merged, the hand's bowl played
+    for _ in range(3):  # the same hand lying still plays nothing
+        tr.detections([("Singing bowl", 0.3, 0.3, 0.2, 0.2, 0.4), ("Singing bowl", 0.7, 0.3, 0.2, 0.2, 0.3),
+                       ("Hand", 0.35, 0.35, 0.1, 0.1, 0.3)])
+        m = tr.step([0.0] * len(tr.tracks), -1)
+    assert [x[6] for x in m] == [0, 0], m
     tr = Tracker()  # a row of 7, the nearest (lowest) is C; the mallet strikes C, E, G, B
     row7 = [(0.4, 0.80 - 0.1 * r, 0.1, 0.08) for r in range(7)]
     for _ in range(3):
