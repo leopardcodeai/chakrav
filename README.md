@@ -47,7 +47,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 | Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
 | Heard pill (orange dot while it hears), seen pill (green dot while it sees) | work |
 | Spectrum: one band a semitone, the locked tone's octave and three semitones either side (A2 to D4 for octave 3), its band in its chakra's colour; the seven chakra dots under their notes | works |
-| Indicator dot beside the gear, as on iOS: green while a camera or a video feeds the view, orange while only the microphone listens, grey for the demo scene; no connection dot | works |
+| Indicator dot beside the gear, as on iOS: green while a camera or a video feeds the view, orange while only the microphone listens, grey for the demo scene; the connection is the Wi-Fi glyph between dot and gear | works |
 | Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board a marked TODO for the module's flash LED |
 | Settings: Settings, Connections, **Camera** (on, boxes, fps, Cloud AI) | work; stored as settings version 5 on the board |
 | Cloud AI (experimental) | a **stub**: the setting and `tools/cloud_vision.py` exist, nothing is sent in v0 |

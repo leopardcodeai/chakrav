@@ -67,6 +67,7 @@ CAM_DOT, MIC_DOT, IDLE_DOT = "#30D158", "#FF9F0A", "#8E8E93"  # DESIGN.md: Apple
 # Material Design Icons 7.4.47: cog, home-assistant, lightbulb, wifi, bluetooth, check-circle, monitor,
 # waveform (heard), eye-outline (seen), camera, camera-off
 COG, HA, BULB, WIFI, BT, CHECK, MONITOR = 0xF0493, 0xF07D0, 0xF0335, 0xF05A9, 0xF00AF, 0xF05E0, 0xF0379
+WIFI_OFF, WIFI_SYNC = 0xF05AA, 0xF16C7  # the connection in the top bar, beside the gear (DESIGN.md)
 WAVE, EYE, CAMERA, CAMERA_OFF, CLOUD = 0xF147D, 0xF06D0, 0xF0100, 0xF05DF, 0xF0163
 MIC, VIDEO, FLASH, MOVIE = 0xF036C, 0xF0567, 0xF0241, 0xF0381  # microphone, video, flash, movie (demo)
 ON, OFF = "#6E5ACF", "#3A3744"  # DESIGN.md: chosen, not chosen
@@ -263,12 +264,16 @@ def top_bar():
     text("clock", None, 165, y + 10, 150, 36, 28, BOLD, WHITE, align="center", sample="12:00", overflow="clip")
     # The indicator dot, as iOS shows it (owner 25.10.2026, DESIGN.md): green while a camera or a video
     # feeds the view, orange while only the microphone listens, grey while nothing live does (the
-    # drawn demo scene). The connection has no dot. Three fixed colours, each behind a visible flag
-    # (chakra_core.c draw_mode).
+    # drawn demo scene). The connection has no dot: it is the Wi-Fi glyph right of the dot
+    # (chakra_core.c swaps it), then the gear, in ChakraA's spacing. Three fixed colours, each behind
+    # a visible flag (chakra_core.c draw_mode).
+    gx = 480 - FRAME - 54
     for key, rgb in (("cam", CAM_DOT), ("mic", MIC_DOT), ("idle", IDLE_DOT)):
-        group(f"grp_{key}_dot", None, 480 - FRAME - 70, y + 21, 10, 10, hidden=key != "mic")
+        group(f"grp_{key}_dot", None, gx - 54, y + 21, 10, 10, hidden=key != "mic")
         add("container", None, f"grp_{key}_dot", x=0, y=0, w=10, h=10, radius=5, bg_color=rgb)
-    add("button", "gear", None, x=480 - FRAME - 54, y=y + 2, w=48, h=48, radius=24, bg_opacity=0, callback="gear")
+    text("wifi_icon", None, gx - 34, y + 13, 26, 26, 26, ICONS, MUTED, align="center", sample=chr(WIFI_SYNC),
+         charset=ICON_CHARSET, overflow="clip")
+    add("button", "gear", None, x=gx, y=y + 2, w=48, h=48, radius=24, bg_opacity=0, callback="gear")
     icon("gear", 7, 7, 34, COG)
 
 
@@ -428,7 +433,7 @@ def main():
     for s in STRINGS:
         chars.update(s)
     (HERE / CHARSET).write_text("".join(sorted(chars)), encoding="utf-8")
-    (HERE / ICON_CHARSET).write_text("".join(chr(c) for c in (COG, HA, BULB, WIFI, BT, CHECK, MONITOR, WAVE, EYE,
+    (HERE / ICON_CHARSET).write_text("".join(chr(c) for c in (COG, HA, BULB, WIFI, BT, CHECK, MONITOR, WIFI_OFF, WIFI_SYNC, WAVE, EYE,
                                                               CAMERA, CAMERA_OFF, 0xF0485, CLOUD, MIC, VIDEO, FLASH, MOVIE)),
                                      encoding="utf-8")
     (HERE / "main.json").write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
