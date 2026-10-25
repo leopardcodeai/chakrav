@@ -11,19 +11,27 @@ German: [README.de.md](README.de.md).
 
 ## Which one?
 
-| | [Chakra Detection](https://github.com/leopardcodeai/chakra-detection) | ChakraV (this) |
-|---|---|---|
-| For | sound healing rooms where a camera is not wanted | trying out what a camera adds |
-| Senses | microphone | microphone and camera |
-| AI | optional AI sound gate | on-device AI first, cloud models with your own key to compare |
-| Maturity | tested against real recordings | experimental, v0 |
-| Privacy | no picture ever | the picture stays on the device; the cloud is off unless you switch it on |
+There are two apps, from the same code. In yoga and sound healing many people want no AI at all, or only
+AI that stays in the room: **[Chakra Detection](https://github.com/leopardcodeai/chakra-detection) is built
+for that.** It works without any AI, its one AI feature runs locally on the device, and it has no camera and
+no cloud. **ChakraV is explicitly the experimental one**: it tries what a camera and bigger models can add.
 
-If you do not need the camera, take Chakra.
+| | [Chakra Detection](https://github.com/leopardcodeai/chakra-detection) | ChakraV (this one) |
+|---|---|---|
+| Listens | microphone | microphone and camera |
+| AI | none needed; an optional local AI sound gate, on the device only | as much on the device as the ESP32-S31 runs, plus optional cloud models with your own API key |
+| For | rooms where a camera is not wanted: the classic, private choice | experiments: what can it see and mark? |
+| Maturity | tested against real recordings | v0 |
+
+If you do not need the camera, or want no AI beyond the device, take Chakra.
+
+**The light is the same in both.** Glow, strike kick, fades, the screen lamp, the colour settings and
+every lamp setting come from the same core code (`chakra_core.c`: `animate()`, `light()`, the colour and
+lamp pages), and a change to them is made in both apps.
 
 | Live view | Settings | Camera | Connections |
 |---|---|---|---|
-| ![Frame in the Heart's green, the demo scene with three marked instruments, Heart F3 174.6 Hz, heard Tone, seen Singing bowl](docs/screen_main.png) | ![Colour, brightness, sensitivity, afterglow, mapping, language, AI sound gate](docs/screen_settings.png) | ![Camera on or off, boxes on or off, 1, 2 or 4 fps, the source](docs/screen_camera.png) | ![The screen lamp ticked, the other lamps not paired](docs/screen_connections.png) |
+| ![Frame in the Heart's green, the demo scene with three marked instruments, Heart F3 174.6 Hz, heard Tone, seen Singing bowl](docs/screen_main.png) | ![Colour, brightness, sensitivity, afterglow, mapping, language, local AI sound gate](docs/screen_settings.png) | ![Camera on or off, boxes on or off, 1, 2 or 4 fps, the source](docs/screen_camera.png) | ![The screen lamp ticked, the other lamps not paired](docs/screen_connections.png) |
 
 All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never a real camera picture.
 
@@ -31,7 +39,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 
 | Part | State |
 |---|---|
-| Chakra detection, lamps, screen lamp, AI sound gate | as in the chakra app at 2373575 |
+| Chakra detection, lamps, screen lamp, local AI sound gate | as in Chakra Detection (676670f) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
 | Live camera view, Mac camera, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`) |
 | Instrument boxes with label pills, up to 4 | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
@@ -46,7 +54,7 @@ sent and the seen pill says "Nothing".
 
 ## AI: on the device first, the cloud to compare
 
-1. **On the device.** As much as the ESP32-S31 can run itself, through ESP-DL: the audio gate (EfficientAT
+1. **On the device.** As much as the ESP32-S31 can run itself, through ESP-DL: the local AI sound gate (EfficientAT
    mn05, w8a16, the same one `tools/ai_gate.py` runs on the Mac) and an instrument detector such as
    ESPDet-Pico. Both are **estimates so far**: the board is on order, nothing is measured on hardware.
 2. **In the cloud, optional.** Vision and audio models with your own API key (for example OpenAI or
@@ -64,7 +72,7 @@ workspace next to this folder (`../../workspace`).
 
 ```sh
 ./sim.sh --demo     # browser preview (the address it prints): demo bowls, the drawn scene with its boxes
-./sim.sh --live     # the Mac's microphone with the AI sound gate, and the Mac's camera
+./sim.sh --live     # the Mac's microphone with the local AI sound gate, and the Mac's camera
 ./sim.sh            # the app alone; feed it yourself:
 python3 tools/chakra_feed.py tone 174.6           # one tone (Heart)
 python3 tools/camera_live.py --demo --demo-boxes  # the demo scene
@@ -85,7 +93,7 @@ the camera set to Off, ffmpeg stops, so the Mac's camera is off too.
 Our Vibe Mode launcher simulation (`tools/mosaico_launcher.py` in the Mosaico workspace, http://127.0.0.1:3300,
 not part of this repository) has a ChakraV tile:
 
-- **Live** (default): `chakra_feed.py mic --ai` (microphone and AI sound gate, colours to the screen lamp)
+- **Live** (default): `chakra_feed.py mic --ai` (microphone and the local AI sound gate, when its venv exists; colours to the screen lamp)
   and `camera_live.py` (the Mac's camera, no boxes).
 - **Demo** (`--demo chakrav`): demo bowls and `camera_live.py --demo --demo-boxes`.
 - Hold the top bar 3 s to close it, as every app.
@@ -97,7 +105,7 @@ not part of this repository) has a ChakraV tile:
 | `frame\t<path>` | a JPEG of exactly 368 x 276, read at once |
 | `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 4 |
 | `source\t<text>` | the Camera page's source line |
-| `sound\t<bowl\|other\|none>\t<strike>` | the AI sound gate (`tools/ai_gate.py`) |
+| `sound\t<bowl\|other\|none>\t<strike>` | the local AI sound gate (`tools/ai_gate.py`); while none has spoken for 5 s the detection leads alone |
 | `camera\t<on>\t<boxes>\t<fps>\t<cloud>` | back to every client: the Camera settings |
 
 ## Design

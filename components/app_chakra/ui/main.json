@@ -1966,7 +1966,7 @@
    "y": 337,
    "w": 200,
    "h": 20,
-   "text": "AI sound gate",
+   "text": "Local AI sound gate",
    "font_size": 15,
    "font": "fonts/Inter-Bold.ttf",
    "fg_color": "#FFFFFF",

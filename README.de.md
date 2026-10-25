@@ -11,19 +11,28 @@ sie sieht. Englische Fassung (Quelle): [README.md](README.md).
 
 ## Welche App?
 
+Es gibt zwei Apps aus demselben Code. Im Yoga und in der Klangarbeit wollen viele Menschen gar keine KI oder
+nur KI, die im Raum bleibt: **[Chakra Detection](https://github.com/leopardcodeai/chakra-detection) ist dafür
+gebaut.** Sie läuft ohne jede KI, ihre einzige KI-Funktion läuft lokal auf dem Gerät, und sie hat keine Kamera
+und keine Cloud. **ChakraV ist ausdrücklich die experimentelle**: sie probiert aus, was eine Kamera und größere
+Modelle bringen.
+
 | | [Chakra Detection](https://github.com/leopardcodeai/chakra-detection) | ChakraV (diese) |
 |---|---|---|
-| Für | Klangräume, in denen keine Kamera gewünscht ist | ausprobieren, was eine Kamera bringt |
-| Sinne | Mikrofon | Mikrofon und Kamera |
-| KI | optionaler KI-Klangfilter | zuerst KI auf dem Gerät, Cloud-Modelle mit eigenem Schlüssel zum Vergleich |
-| Reife | an echten Aufnahmen getestet | experimentell, v0 |
-| Privatsphäre | nie ein Bild | das Bild bleibt auf dem Gerät; die Cloud ist aus, bis man sie einschaltet |
+| Hört | Mikrofon | Mikrofon und Kamera |
+| KI | keine nötig; ein optionaler lokaler KI-Klangfilter, nur auf dem Gerät | so viel auf dem Gerät, wie der ESP32-S31 schafft, dazu optional Cloud-Modelle mit eigenem API-Schlüssel |
+| Für | Räume ohne Kamera: die klassische, private Wahl | Experimente: was kann sie sehen und markieren? |
+| Reife | an echten Aufnahmen getestet | v0 |
 
-Wer keine Kamera braucht, nimmt Chakra.
+Wer keine Kamera braucht oder keine KI außerhalb des Geräts will, nimmt Chakra.
+
+**Das Licht ist in beiden gleich.** Leuchten, Anschlag-Kick, Überblendungen, Bildschirm-Lampe,
+Farbeinstellungen und jede Lampeneinstellung kommen aus demselben Kerncode (`chakra_core.c`: `animate()`,
+`light()`, die Farb- und Lampenseiten), und eine Änderung daran wird in beiden Apps gemacht.
 
 | Live-Ansicht | Einstellungen | Kamera | Anbindungen |
 |---|---|---|---|
-| ![Rahmen im Grün des Herzens, Demo-Szene mit drei markierten Instrumenten](docs/screen_main.png) | ![Farbe, Helligkeit, Empfindlichkeit, Nachklang, Zuordnung, Sprache, KI-Klangfilter](docs/screen_settings.png) | ![Kamera an oder aus, Boxen an oder aus, 1, 2 oder 4 fps, Quelle](docs/screen_camera.png) | ![Bildschirm-Lampe angehakt, die anderen Lampen nicht gekoppelt](docs/screen_connections.png) |
+| ![Rahmen im Grün des Herzens, Demo-Szene mit drei markierten Instrumenten](docs/screen_main.png) | ![Farbe, Helligkeit, Empfindlichkeit, Nachklang, Zuordnung, Sprache, lokaler KI-Klangfilter](docs/screen_settings.png) | ![Kamera an oder aus, Boxen an oder aus, 1, 2 oder 4 fps, Quelle](docs/screen_camera.png) | ![Bildschirm-Lampe angehakt, die anderen Lampen nicht gekoppelt](docs/screen_connections.png) |
 
 Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --demo`), nie ein echtes Kamerabild.
 
@@ -31,7 +40,7 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 
 | Teil | Stand |
 |---|---|
-| Chakra-Erkennung, Lampen, Bildschirm-Lampe, KI-Klangfilter | wie in der Chakra-App bei 2373575 |
+| Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in Chakra Detection (676670f) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
 | Live-Kamerabild, Mac-Kamera, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`) |
 | Instrument-Boxen mit Beschriftung, bis zu 4 | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
@@ -46,7 +55,7 @@ Ohne den Schalter kommen keine Boxen, und die Pille "gesehen" sagt "Nichts".
 
 ## KI: zuerst auf dem Gerät, die Cloud zum Vergleich
 
-1. **Auf dem Gerät.** So viel, wie der ESP32-S31 selbst rechnen kann, über ESP-DL: der Klangfilter
+1. **Auf dem Gerät.** So viel, wie der ESP32-S31 selbst rechnen kann, über ESP-DL: der lokale KI-Klangfilter
    (EfficientAT mn05, w8a16, derselbe, den `tools/ai_gate.py` auf dem Mac nutzt) und ein Instrumentendetektor
    wie ESPDet-Pico. Beides sind **bisher Schätzungen**: das Board ist bestellt, auf Hardware ist nichts gemessen.
 2. **In der Cloud, optional.** Bild- und Audiomodelle mit eigenem API-Schlüssel (zum Beispiel OpenAI oder
@@ -64,7 +73,7 @@ Mosaico-Workspace neben diesem Ordner (`../../workspace`).
 
 ```sh
 ./sim.sh --demo     # Browser-Vorschau (die ausgegebene Adresse): Demo-Schalen, die gezeichnete Szene mit Boxen
-./sim.sh --live     # Mikrofon des Macs mit KI-Klangfilter und die Kamera des Macs
+./sim.sh --live     # Mikrofon des Macs mit lokalem KI-Klangfilter und die Kamera des Macs
 ./sim.sh            # die App allein; selbst füttern:
 python3 tools/chakra_feed.py tone 174.6           # ein Ton (Herz)
 python3 tools/camera_live.py --demo --demo-boxes  # die Demo-Szene
@@ -85,7 +94,7 @@ gelöscht wird. Steht die Kamera auf Aus, hält ffmpeg an, und die Kamera des Ma
 Unsere Vibe-Mode-Launcher-Simulation (`tools/mosaico_launcher.py` im Mosaico-Workspace, http://127.0.0.1:3300,
 nicht Teil dieses Repositorys) hat eine Kachel ChakraV:
 
-- **Live** (Standard): `chakra_feed.py mic --ai` (Mikrofon und KI-Klangfilter, Farben an die
+- **Live** (Standard): `chakra_feed.py mic --ai` (Mikrofon und lokaler KI-Klangfilter, wenn seine venv da ist; Farben an die
   Bildschirm-Lampe) und `camera_live.py` (Kamera des Macs, ohne Boxen).
 - **Demo** (`--demo chakrav`): Demo-Schalen und `camera_live.py --demo --demo-boxes`.
 - Zum Schließen die obere Leiste 3 s halten, wie in jeder App.

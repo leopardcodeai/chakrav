@@ -69,7 +69,7 @@ STRINGS = [
     "Wurzel", "Sakral", "Solarplexus", "Herz", "Hals", "Stirn", "Krone",
     "Ready", "Strike a bowl or hum", " ct", "+", ".", ",", "Bereit", "Schale anschlagen", "Hz", "dB", "%", " s", " · ",
     "Settings", "Einstellungen", "Connections", "Anbindungen", "Camera", "Kamera", "Auto", "Colour", "Farbe", "°",
-    "AI sound gate", "KI-Klangfilter", "Off", "On", "Aus", "An", "Boxes", "Boxen", "Frame rate", "Bildrate", "fps",
+    "Local AI sound gate", "Lokaler KI-Klangfilter", "Off", "On", "Aus", "An", "Boxes", "Boxen", "Frame rate", "Bildrate", "fps",
     "Source", "Quelle", "Cloud AI", "Cloud-KI", "beta", "cloud stub", "Mac camera", "Mac-Kamera", "No camera yet", "Noch keine Kamera", "Waiting for camera",
     "Warte auf Kamera", "Camera off", "Kamera aus", "Bowl", "Schale", "Other", "Anderes", "Quiet", "Still", "Tone",
     "Ton", "Nothing", "Nichts", "Boxes off", "Boxen aus", "Singing bowl", "Klangschale", "Tuning fork", "Stimmgabel",
@@ -272,7 +272,7 @@ def settings():
             bg_color=ON if i in (0, 3) else OFF, bind=b, bind_target="color", **ev)
         text(f"lbl_{b}", b, 0, 6, ws[i], 20, 14, BOLD, WHITE, align="center",
              sample=label if label != "Notes" else "Notes 440")
-    text("lbl_ai", "grp_page_set", lx, 337, 200, 20, 15, BOLD, WHITE, sample="AI sound gate", overflow="ellipsis")
+    text("lbl_ai", "grp_page_set", lx, 337, 200, 20, 15, BOLD, WHITE, sample="Local AI sound gate", overflow="ellipsis")
     for j, (b, lab) in enumerate([("ai_off", "Off"), ("ai_on", "On")]):
         option(b, "grp_page_set", lx + pw - 156 + j * 80, 332, 76, 30, lab, chosen=j == 0)
 
