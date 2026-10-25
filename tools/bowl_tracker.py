@@ -17,8 +17,12 @@ What: detect_owl.py hands each frame's detections, the motion inside every box a
           whose learned chakra the app hears now.
         * The percent on a mark is how steadily it is found (in 8 of the last 8 detections: 100 %), not
           OWL-ViT's score: that is no probability and stays near 0.1 to 0.3 even for a plain bowl.
-        * Hear and see together: when the heard chakra changes to k (a new tone), the bowl track that
-          moved most in the last ONSET_FRAMES frames gets a vote for k. After VOTES_NEEDED votes it is
+        * A chakra set in a row (7 bowls): from 3 or more strikes with the mallet seen, it learns which end
+          of the row is C and names all 7 at once ("Bowl C" .. "Bowl B"); single strikes are often one
+          bowl off, the direction is not. The mallet head is found by its colour (detect_owl).
+        * Hear and see together: when the heard chakra changes to k (a new tone), the bowl a hand or
+          mallet covered in the last ONSET_FRAMES frames gets a vote for k (the one covered last if
+          several), failing that the bowl that moved most. After VOTES_NEEDED votes it is
           that chakra's bowl, labelled with its note ("Bowl C"), and marked played whenever k sounds,
           even with the hand out of the picture.
       Notes: the Indian seven-chakra system, as in chakra_detect.c: C Root, D Sacral, E Solar plexus,
@@ -47,6 +51,7 @@ CONFIRM = 2         # detections before a track is shown
 SEEN_OF = 8         # the percent on a mark: found in how many of the last 8 detections
 ONSET_FRAMES = 3    # how far back a moving bowl counts for a new tone
 VOTES_NEEDED = 2
+ROW_CORR = 0.8      # how clearly the notes must rise (or fall) along the row before all bowls are named
 MAX_MARKS = 7       # the owner plays 7 chakra bowls; the app draws CHAKRA_BOXES of them
 SHOW_STEADY = 0.25  # a track found in fewer than a quarter of the last detections is no longer drawn
 PLAYERS = {"Mallet", "Hand"}  # these play an instrument they are on; tracked only where last seen
@@ -77,6 +82,7 @@ class Track:
         self.hits, self.missed = 1, 0
         self.found = [1]  # the last SEEN_OF detections: 1 found, 0 missed
         self.motion = [0.0] * ONSET_FRAMES
+        self.touch = [0] * ONSET_FRAMES  # 1 where a hand or mallet covered it, the last ONSET_FRAMES frames
         self.votes = [0] * len(NOTES)
 
     @property
@@ -106,6 +112,44 @@ class Tracker:
         self.tracks: list[Track] = []
         self.frame = 0
         self.heard = -1
+        self.mallet = None   # (x, y) of the mallet's head this frame, from its colour (detect_owl)
+        self.trail = []      # the bowl the mallet head was on, the last ONSET_FRAMES frames (track ids)
+        self.pairs = []      # (chakra heard, rank of the bowl along the row) for each new tone with a mallet
+        self.direction = 0   # +1: the row's first bowl is C, -1: it is B; 0 not learned yet
+
+    def row(self) -> list:
+        """The bowls standing on one straight line (the set), in order from the nearest (lowest in the
+        picture). Spare bowls beside it are left out: of every line through two bowl centres, the one
+        that passes closest to the most centres wins (within half a bowl's width)."""
+        bowls = [t for t in self.tracks if t.label == "Singing bowl" and t.hits >= CONFIRM]
+        if len(bowls) < 3:
+            return []
+        c = [(t.box[0] + t.box[2] / 2, t.box[1] + t.box[3] / 2) for t in bowls]
+        best = []
+        for i in range(len(bowls)):
+            for j in range(i + 1, len(bowls)):
+                dx, dy = c[j][0] - c[i][0], c[j][1] - c[i][1]
+                n = (dx * dx + dy * dy) ** 0.5
+                if n < 1e-6:
+                    continue
+                on = [k for k in range(len(bowls))
+                      if abs((c[k][0] - c[i][0]) * dy - (c[k][1] - c[i][1]) * dx) / n < 0.5 * bowls[k].box[2]]
+                if len(on) > len(best):
+                    best, axis = on, (dx / n, dy / n)
+        if len(best) < 3:
+            return []
+        ux, uy = axis if axis[1] < 0 else (-axis[0], -axis[1])  # pointing up the picture
+        return sorted((bowls[k] for k in best),
+                      key=lambda t: (t.box[0] + t.box[2] / 2) * ux + (t.box[1] + t.box[3] / 2) * uy)
+
+    def mallet_bowl(self):
+        """The bowl the mallet head is on: of the boxes holding it, the one whose far rim (top edge) is nearest."""
+        if not self.mallet:
+            return None
+        x, y = self.mallet
+        inside = [t for t in self.tracks if t.label == "Singing bowl" and t.hits >= CONFIRM and
+                  t.box[0] - 0.03 <= x <= t.box[0] + t.box[2] + 0.03 and t.box[1] - 0.05 <= y <= t.box[1] + t.box[3]]
+        return min(inside, key=lambda t: abs(t.box[1] - y)) if inside else None
 
     def need_detect(self, scene_change: float) -> bool:
         """Whether this frame needs the detector, from the whole picture's change since the last frame."""
@@ -166,9 +210,6 @@ class Tracker:
             t.missed += 1  # frames since it was last found; update() sets it back to 0
         for t, m in zip(self.tracks, motions):
             t.motion = t.motion[1:] + [m]
-        if heard != self.heard and heard >= 0:
-            self.vote(heard)
-        self.heard = heard
         shown = [t for t in self.tracks if t.hits >= CONFIRM]
         players = [t for t in shown if t.label in PLAYERS]
         marks = []
@@ -180,6 +221,14 @@ class Tracker:
             cover = [(inter(p.box, t.box) / (t.box[2] * t.box[3] + 1e-9), id(t)) for t in shown if t.label not in PLAYERS]
             if cover and max(cover)[0] > TOUCH:
                 touched_ids.add(max(cover)[1])
+        for t in self.tracks:
+            t.touch = t.touch[1:] + [1 if id(t) in touched_ids else 0]
+        on = self.mallet_bowl()
+        self.trail = (self.trail + [id(on) if on else None])[-ONSET_FRAMES:]
+        if heard != self.heard and heard >= 0:
+            self.vote(heard)  # after this frame's touches: the hand on the bowl as the tone starts
+            self.learn_row(heard)
+        self.heard = heard
         for t in shown:
             if t.label in HIDDEN or t.steady < SHOW_STEADY:
                 continue
@@ -194,8 +243,55 @@ class Tracker:
         marks.sort(key=lambda m: (-m[0][6], -m[0][5], -m[1]))
         return [m[0] for m in marks[:MAX_MARKS]]
 
+    def learn_row(self, k: int) -> None:
+        """A chakra set in a row: learn from a few strikes which end is C, then name all bowls at once.
+        Single strikes are often one bowl off (a strike on a far rim lands in the next bowl's box), the
+        direction is not (25.10.2026, the owner's 7 bowls, 5 of 7 strikes in the right box)."""
+        row = self.row()
+        ids = [i for i in self.trail if i is not None]
+        if len(row) != len(NOTES) or not ids:
+            return
+        rank = next((r for r, t in enumerate(row) if id(t) == ids[-1]), None)
+        if rank is None:
+            return
+        self.pairs = (self.pairs + [(k, rank)])[-12:]
+        if len(self.pairs) < 3:
+            return
+        n = len(self.pairs)
+        mk, mr = sum(p[0] for p in self.pairs) / n, sum(p[1] for p in self.pairs) / n
+        cov = sum((p[0] - mk) * (p[1] - mr) for p in self.pairs)
+        vk = sum((p[0] - mk) ** 2 for p in self.pairs) ** 0.5
+        vr = sum((p[1] - mr) ** 2 for p in self.pairs) ** 0.5
+        corr = cov / (vk * vr + 1e-9)
+        if abs(corr) >= ROW_CORR:
+            self.direction = 1 if corr > 0 else -1
+            for r, t in enumerate(row):
+                t.votes = [0] * len(NOTES)
+                t.votes[r if self.direction > 0 else len(NOTES) - 1 - r] = VOTES_NEEDED
+
     def vote(self, k: int) -> None:
+        """A new tone k: the bowl a hand or mallet was on gets the vote; failing that, the one that moved most.
+        A person leaning over the row stirs several boxes, so the touch is the better witness (25.10.2026)."""
         bowls = [t for t in self.tracks if t.hits >= CONFIRM and t.label in INSTRUMENTS]
+        if self.direction:
+            return  # the row is learned; single votes would only add noise
+        on = [i for i in self.trail if i is not None]
+        if on:
+            hit = next((t for t in bowls if id(t) == on[-1]), None)
+            if hit:
+                hit.votes[k] += 1
+                return
+        touched = [t for t in bowls if any(t.touch)]
+        if len(touched) == 1:
+            touched[0].votes[k] += 1
+            return
+        if touched:
+            # Several touched in the window (the hand moves on): the one touched last before the tone.
+            last = max(touched, key=lambda t: max(i for i, v in enumerate(t.touch) if v))
+            if sum(1 for t in touched if t.touch[-1] == last.touch[-1] and
+                   max(i for i, v in enumerate(t.touch) if v) == max(i for i, v in enumerate(last.touch) if v)) == 1:
+                last.votes[k] += 1
+            return
         moving = sorted(bowls, key=lambda t: -max(t.motion))
         if not moving or max(moving[0].motion) <= MOTION:
             return
@@ -235,6 +331,20 @@ def self_test() -> None:
                        ("Singing bowl", 0.7, 0.3, 0.2, 0.2, 0.3), ("Hand", 0.35, 0.35, 0.1, 0.1, 0.3)])
         m = tr.step([0.0] * len(tr.tracks), -1)
     assert len(m) == 2 and [x[6] for x in m] == [1, 0] and m[0][1] < 0.5, m  # merged, the hand's bowl played
+    tr = Tracker()  # a row of 7, the nearest (lowest) is C; the mallet strikes C, E, G, B
+    row7 = [(0.4, 0.80 - 0.1 * r, 0.1, 0.08) for r in range(7)]
+    for _ in range(3):
+        tr.detections([("Singing bowl", *b, 0.3) for b in row7])
+        tr.step([0.0] * len(tr.tracks), -1)
+    for k in (0, 2, 4, 6):
+        b = row7[k]
+        tr.mallet = (b[0] + 0.05, b[1] + 0.01)
+        tr.step([0.0] * len(tr.tracks), -1)
+        m = tr.step([0.0] * len(tr.tracks), k)
+    tr.mallet = None
+    m = tr.step([0.0] * len(tr.tracks), -1)
+    names = {round(x[2], 2): x[0] for x in m}
+    assert tr.direction == 1 and names[0.8] == "Bowl C" and names[0.2] == "Bowl B", (tr.direction, names)
     print("self-test ok")
 
 

@@ -57,6 +57,53 @@ def iou(a, b) -> float:
     return inter / (a[2] * a[3] + b[2] * b[3] - inter + 1e-9)
 
 
+class MalletColour:
+    """The mallet's head by its colour: learned from the model's mallet box, then followed every frame.
+    The model finds a mallet only now and then; its felt head (red on the owner's) is easy to follow by
+    hue, which is cheap enough for the ESP32-S31 too. Pixels of that hue that stay put (a red stripe on
+    the mat) become background and do not count."""
+    HUE_TOL, MIN_PX = 15.0, 4
+
+    def __init__(self, np):
+        self.np = np
+        self.hue = None
+        self.bg = None
+
+    def hsv(self, img):
+        np = self.np
+        a = np.asarray(img.convert("HSV").resize((img.width // 4, img.height // 4)), dtype=np.float32)
+        return a[..., 0] * 360 / 255, a[..., 1] / 255, a[..., 2] / 255
+
+    def learn(self, img, box) -> None:
+        np = self.np
+        h, s, v = self.hsv(img)
+        H, W = h.shape
+        x0, y0 = int(box[0] * W), int(box[1] * H)
+        x1, y1 = max(x0 + 1, int((box[0] + box[2]) * W)), max(y0 + 1, int((box[1] + box[3]) * H))
+        hh, ss, vv = h[y0:y1, x0:x1], s[y0:y1, x0:x1], v[y0:y1, x0:x1]
+        m = (ss > 0.5) & (vv > 0.3)
+        if m.sum() < 15:
+            return  # a grey or wooden mallet: nothing to follow by colour
+        rad = np.radians(hh[m])
+        hue = float(np.degrees(np.arctan2(np.sin(rad).mean(), np.cos(rad).mean())) % 360)
+        self.hue = hue if self.hue is None else hue  # the newest mallet box decides
+
+    def find(self, img):
+        """(x, y) of the head this frame, normalised, or None."""
+        if self.hue is None:
+            return None
+        np = self.np
+        h, s, v = self.hsv(img)
+        d = np.abs((h - self.hue + 180) % 360 - 180)
+        m = (d < self.HUE_TOL) & (s > 0.5) & (v > 0.3)
+        self.bg = m.astype(np.float32) if self.bg is None or self.bg.shape != m.shape else 0.95 * self.bg + 0.05 * m
+        m &= self.bg < 0.6  # what has been there for most of the last ~20 frames is background
+        if m.sum() < self.MIN_PX:
+            return None
+        ys, xs = np.nonzero(m)
+        return float(xs.mean() / m.shape[1]), float(ys.mean() / m.shape[0])
+
+
 class Worker:
     """The model in its own thread: ask() hands it the newest frame, take() returns finished boxes once."""
 
@@ -143,6 +190,7 @@ def main():
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import bowl_tracker
     tracker = bowl_tracker.Tracker()
+    mallet = MalletColour(np)
     worker = None if a.sync else Worker(detect)
     inp, out = sys.stdin.buffer, sys.stdout
     prev = None  # the last frame in grey, for the motion inside each box
@@ -155,14 +203,21 @@ def main():
         grey = np.asarray(img.convert("L"), dtype=np.float32)
         same = prev is not None and prev.shape == grey.shape
         scene = float(np.abs(grey[::8, ::8] - prev[::8, ::8]).mean()) if same else 0.0
+        found = None
         if tracker.need_detect(scene):
             if worker:
                 worker.ask(img)
             else:
-                tracker.detections(detect(img))
-        found = worker.take() if worker else None
+                found = detect(img)
+        if worker:
+            found = worker.take()
         if found is not None:
             tracker.detections(found)  # from a frame or two ago: bowls do not move in that time
+            for f in found:
+                if f[0] == "Mallet" and f[5] >= 0.12:
+                    mallet.learn(img, f[1:5])
+                    break
+        tracker.mallet = mallet.find(img)
         # The motion inside each kept box: a hand or a mallet on a bowl changes its pixels, a still bowl does not.
         H, W = grey.shape
         motions = []
