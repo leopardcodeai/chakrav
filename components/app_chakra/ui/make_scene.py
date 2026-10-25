@@ -4,9 +4,10 @@
 What: ChakraV is the chakra app with a camera. The whole screen is the light: a thick frame in the
       chakra's colour runs around the edge (FRAME px, fading softly into the dark panel inside it,
       faded and kicked by chakra_core.c). Inside the panel: the top bar (title, clock, dot, gear),
-      the live camera view in the centre with up to four instrument marks over it (a coloured box
+      the live camera view in the centre with up to seven instrument marks over it (a coloured box
       with a label pill each), and below it the chakra's name with the note and Hz, a "heard" pill
-      (what the AI sound gate hears), a "seen" pill (what the boxes show) and a small spectrum.
+      (what the AI sound gate hears), a "seen" pill (what the boxes show) and a small spectrum (one
+      band a semitone, the tone's octave and a little more) with the seven chakra dots under it.
       The gear opens the settings in three tabs: Settings, Connections and Camera (camera on or
       off, boxes on or off, 1, 2 or 4 frames a second, the experimental Cloud AI). Holding the top
       bar 3 s closes the app.
@@ -47,13 +48,22 @@ CAM_W, CAM_H = 368, 276  # the camera view; chakra_core.h CHAKRA_CAM_W/H, tools/
 CAM_X = (480 - CAM_W) // 2
 TOP_H = 52               # the top bar inside the panel
 CAM_Y = FRAME + TOP_H + 4
-BOXES = 4                # chakra_core.h CHAKRA_BOXES
-BOX_RGB = ["#64D2FF", "#FFD60A", "#30D158", "#FF9F0A"]  # one colour per box slot
+BOXES = 7                # chakra_core.h CHAKRA_BOXES: one a chakra bowl
 EDGE, BOX_MIN = 3, 16    # a box's edge width; its smallest width and height
 PLAY_EDGE = 6            # a played box's edges, thicker
 SEEN, PLAYED = "#8E8E93", "#FF9F0A"  # a mark only seen: quiet grey; being played: amber, thick
-PILL_MAX = 150           # a box's label pill at its widest
-BARS = 8                 # the small spectrum below the view: the detection's 16 bands in pairs
+PILL_MAX = 150           # a box's label pill at its widest; chakra_core.c PILL_MAX
+PILL_MIN, PILL_H = 30, 18  # its narrowest ("Gong" fits) and its height; chakra_core.c PILL_MIN
+BARS = 18                # the spectrum below the view, one band a semitone: the locked tone's octave and 3 semitones
+                         # either side (chakra_core.h CHAKRA_VIEW_BANDS)
+BAR_PITCH, BAR_W = 8, 6  # a band's step and width; chakra_core.c BAR_PITCH, BAR_W
+BAND_NOTE0 = 9           # the window starts on an A (A2 for octave 3), so band j is note (9 + j) % 12
+SPEC_W = BARS * BAR_PITCH - (BAR_PITCH - BAR_W)
+BAR_X0 = CAM_X + CAM_W - SPEC_W
+HEARD_W, SEEN_W = 100, 116       # the pills beside it
+NOTE_TO_CHAKRA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 6]  # chakra_detect.c, C .. B
+DOT_NOTES = [0, 2, 4, 5, 7, 9, 11]  # each chakra's dot sits at its natural note, C .. B
+CAM_DOT, MIC_DOT, IDLE_DOT = "#30D158", "#FF9F0A", "#8E8E93"  # DESIGN.md: Apple's dark-mode indicator colours
 # Material Design Icons 7.4.47: cog, home-assistant, lightbulb, wifi, bluetooth, check-circle, monitor,
 # waveform (heard), eye-outline (seen), camera, camera-off
 COG, HA, BULB, WIFI, BT, CHECK, MONITOR = 0xF0493, 0xF07D0, 0xF0335, 0xF05A9, 0xF00AF, 0xF05E0, 0xF0379
@@ -76,7 +86,7 @@ STRINGS = [
     "Source", "Quelle", "Cloud AI", "Cloud-KI", "beta", "cloud stub", "Light", "Licht", "dark", "dunkel",
     "Video", "Demo scene", "Demo-Szene", "Mac camera", "Mac-Kamera", "No camera yet", "Noch keine Kamera", "Waiting for camera",
     "Warte auf Kamera", "Camera off", "Kamera aus", "Bowl", "Schale", "Other", "Anderes", "Quiet", "Still", "Tone",
-    "Ton", "Nothing", "Nichts", "Boxes off", "Boxen aus", "Singing bowl", "Klangschale", "Tuning fork", "Stimmgabel",
+    "Ton", "Nothing", "Nichts", "Boxes off", "Boxen aus", "Bowl C#", "Schale ABCDEFG#", "Tuning fork", "Stimmgabel",
     "Gong", "Drum", "Trommel", "Chimes", "Klangspiel", "Hand",
     "Screen lamp", "Bildschirm-Lampe", "localhost", "http://", "Brightness", "Helligkeit", "Sensitivity", "Empfindlichkeit", "Afterglow", "Nachklang",
     "Mapping", "Zuordnung", "Notes", "Noten", "Solfeggio", "Bowls", "Schalen", "Strike your", "bowl",
@@ -163,8 +173,8 @@ def camera_view():
         # bottom move with the box's width and height.
         g = f"grp_box_{i}"
         add("container", g, "box_clip", hidden=True, bind=g, bind_target="visible",
-            x={"default": 40 + 60 * i, "min": 0, "max": CAM_W, "property": "x"},
-            y={"default": 40 + 30 * i, "min": 0, "max": CAM_H, "property": "y"}, w=CAM_W, h=CAM_H, bg_opacity=0)
+            x={"default": 20 + 44 * i, "min": 0, "max": CAM_W, "property": "x"},
+            y={"default": 40 + 24 * i, "min": 0, "max": CAM_H, "property": "y"}, w=CAM_W, h=CAM_H, bg_opacity=0)
         dyn_w = {"default": 140, "min": BOX_MIN, "max": CAM_W, "property": "width"}
         dyn_h = {"default": 110, "min": BOX_MIN, "max": CAM_H, "property": "height"}
         # Seen: these thin edges in grey. Played: the group grp_play_i below adds thick amber edges.
@@ -187,13 +197,16 @@ def camera_view():
         # The label pill: its width follows the text (chakra_core.c estimates it), at most PILL_MAX.
         # A box at the view's right edge moves its tag left, so the clip never cuts the label.
         tag = f"box_tag_{i}"
+        # Only the name, in Inter Bold 10 px (owner 25.10.2026: "kürzere Beschreibungen ... kleinere
+        # Schrift"): grey says seen, amber says played.
         add("container", tag, g, x={"default": 0, "min": -PILL_MAX, "max": 0, "property": "x"}, y=0,
-            w=PILL_MAX, h=22, bg_opacity=0)
-        add("container", f"box_pill_{i}", tag, x=0, y=0, w={"default": 130, "min": 40, "max": PILL_MAX, "property": "width"},
-            h=22, radius=11, bg_color=SEEN)
+            w=PILL_MAX, h=PILL_H, bg_opacity=0)
+        add("container", f"box_pill_{i}", tag, x=0, y=0, w={"default": 44, "min": PILL_MIN, "max": PILL_MAX, "property": "width"},
+            h=PILL_H, radius=PILL_H // 2, bg_color=SEEN)
         add("container", f"box_ppill_{i}", tag, x=0, y=0, hidden=True, bind=f"box_ppill_{i}", bind_target="visible",
-            w={"default": 130, "min": 40, "max": PILL_MAX, "property": "width"}, h=22, radius=11, bg_color=PLAYED)
-        text(f"box_label_{i}", tag, 9, 3, PILL_MAX - 14, 16, 12, BOLD, INK, sample="Singing bowl 92 %", overflow="ellipsis")
+            w={"default": 44, "min": PILL_MIN, "max": PILL_MAX, "property": "width"}, h=PILL_H, radius=PILL_H // 2,
+            bg_color=PLAYED)
+        text(f"box_label_{i}", tag, 7, 3, PILL_MAX - 10, 13, 10, BOLD, INK, sample="Bowl", overflow="ellipsis")
     band = SCREEN_RADIUS // 2  # DESIGN.md: >= 0.42 x the radius covers the corner
     add("container", None, None, x=CAM_X - band, y=CAM_Y - band, w=CAM_W + 2 * band, h=CAM_H + 2 * band,
         radius=SCREEN_RADIUS + band, bg_color="#00000000", border_color=PANEL, border_width=band)
@@ -208,17 +221,36 @@ def below_view():
     text("sub_text", None, CAM_X + 176, y1 + 7, CAM_W - 176, 22, 16, BOLD, MUTED, align="right",
          sample="Strike a bowl or hum", overflow="ellipsis")
     y2 = y1 + 40
-    for key, x, w, code, sample in (("heard", CAM_X, 128, WAVE, "Bowl"), ("seen", CAM_X + 136, 154, EYE, "Singing bowl")):
+    # Row 2: heard and seen at the left, the spectrum at the right (SPEC_W, from the view's right edge).
+    for key, x, w, code, sample in (("heard", CAM_X, HEARD_W, WAVE, "Bowl"),
+                                    ("seen", CAM_X + HEARD_W + 5, SEEN_W, EYE, "Bowl")):
         add("container", None, None, x=x, y=y2, w=w, h=30, radius=15, bg_color=TILE)
-        add("container", f"{key}_dot", None, x=x + 11, y=y2 + 11, w=8, h=8, radius=4, bg_color=OFF,
+        add("container", f"{key}_dot", None, x=x + 10, y=y2 + 11, w=8, h=8, radius=4, bg_color=OFF,
             bind=f"{key}_dot", bind_target="color")
-        icon(None, x + 25, y2 + 6, 18, code, color=MUTED)
-        text(f"{key}_text", None, x + 48, y2 + 6, w - 56, 20, 14, BOLD, WHITE, sample=sample, overflow="ellipsis")
-    bw, gap = 5, 4
-    x0 = CAM_X + CAM_W - (BARS * bw + (BARS - 1) * gap)
+        icon(None, x + 23, y2 + 7, 16, code, color=MUTED)
+        text(f"{key}_text", None, x + 43, y2 + 7, w - 50, 18, 13, BOLD, WHITE, sample=sample, overflow="ellipsis")
+    # The spectrum as an analyser shows it: one band a semitone on a log axis, neutral white, the
+    # octave of the last locked tone with three semitones either side (A2 to D4 for octave 3;
+    # chakra_core.c moves the window); the locked tone's band lights in its note's colour. Under it
+    # the seven chakra dots at their notes' bands, C .. B; the shown chakra's dot bright and larger.
+    # Fixed colours with only heights, x and visible flags bound (GSP 1.5.1 refuses a bound colour
+    # on a container with a dynamic size).
+    pitch, bw, bh = BAR_PITCH, BAR_W, 22
+    x0 = BAR_X0
     for b in range(BARS):
-        add("progress", f"bar_{b}", None, x=x0 + b * (bw + gap), y=y2, w=bw, h=30, vertical=True,
-            min=0, max=100, value=0, bg_color="#FFFFFF1F", fg_color=WHITE, radius=2)
+        x = x0 + b * pitch
+        add("progress", f"bar_{b}", None, x=x, y=y2, w=bw, h=bh, vertical=True, min=0, max=100, value=0,
+            bg_color="#FFFFFF1A", fg_color="#FFFFFFC8", radius=2)
+        group(f"grp_hot_{b}", None, x, y2, bw, bh)
+        add("progress", f"hot_{b}", f"grp_hot_{b}", x=0, y=0, w=bw, h=bh, vertical=True, min=0, max=100, value=0,
+            bg_color="#00000000", fg_color=CHAKRA_RGB[NOTE_TO_CHAKRA[(BAND_NOTE0 + b) % 12]], radius=2)
+    dy = y2 + bh + 4  # the dots' centre line
+    for i in range(7):
+        b = 12 - BAND_NOTE0 + DOT_NOTES[i]  # the note's band in the window
+        add("container", f"dot_{i}", None, x=x0 + b * pitch + bw // 2 - 4, y=dy - 4, w=8, h=8, bg_opacity=0)
+        add("container", None, f"dot_{i}", x=2, y=2, w=4, h=4, radius=2, bg_color=CHAKRA_RGB[i], bg_opacity=110)
+        group(f"grp_dot_on_{i}", f"dot_{i}", 0, 0, 8, 8)
+        add("container", None, f"grp_dot_on_{i}", x=1, y=1, w=6, h=6, radius=3, bg_color=CHAKRA_RGB[i])
 
 
 def top_bar():
@@ -229,12 +261,13 @@ def top_bar():
     add("label", None, None, x=FRAME + 14, y=y + 8, w=150, h=40, text="ChakraV", font_size=30, font=XBOLD,
         fg_color=WHITE)
     text("clock", None, 165, y + 10, 150, 36, 28, BOLD, WHITE, align="center", sample="12:00", overflow="clip")
-    # The mode at a glance (owner 25.10.2026): a microphone while only sound is used, a camera or a
-    # film strip while a camera or a video feeds the view; the connection colour as a badge dot on it.
-    text("mode_icon", None, 480 - FRAME - 88, y + 12, 28, 28, 26, ICONS, WHITE, align="center", sample=chr(MIC),
-         charset=ICON_CHARSET)
-    add("container", "conn_dot", None, x=480 - FRAME - 68, y=y + 30, w=12, h=12, radius=6, bg_color=ORANGE,
-        border_color=PANEL, border_width=2, bind="conn_dot", bind_target="color")
+    # The indicator dot, as iOS shows it (owner 25.10.2026, DESIGN.md): green while a camera or a video
+    # feeds the view, orange while only the microphone listens, grey while nothing live does (the
+    # drawn demo scene). The connection has no dot. Three fixed colours, each behind a visible flag
+    # (chakra_core.c draw_mode).
+    for key, rgb in (("cam", CAM_DOT), ("mic", MIC_DOT), ("idle", IDLE_DOT)):
+        group(f"grp_{key}_dot", None, 480 - FRAME - 70, y + 21, 10, 10, hidden=key != "mic")
+        add("container", None, f"grp_{key}_dot", x=0, y=0, w=10, h=10, radius=5, bg_color=rgb)
     add("button", "gear", None, x=480 - FRAME - 54, y=y + 2, w=48, h=48, radius=24, bg_opacity=0, callback="gear")
     icon("gear", 7, 7, 34, COG)
 

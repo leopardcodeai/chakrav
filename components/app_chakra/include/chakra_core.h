@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 #define CHAKRA_LAMPS 4  // rows in the settings' lamp list (ui/make_scene.py LAMPS)
-#define CHAKRA_BOXES 4  // instrument marks over the camera view (ui/make_scene.py BOXES)
+#define CHAKRA_BOXES 7  // instrument marks over the camera view, one a chakra bowl (ui/make_scene.py BOXES)
 #define CHAKRA_CAM_W 368  // the camera view in pixels; a frame must have exactly this size
 #define CHAKRA_CAM_H 276
 
@@ -77,7 +77,7 @@ typedef struct {
  * with the light alone (chakra_core.c, "camera light"). */
 enum { CHAKRA_CAM_LIGHT_OFF, CHAKRA_CAM_LIGHT_ON, CHAKRA_CAM_LIGHT_AUTO };
 
-/* What feeds the view, for the mode mark beside the gear and the Camera page's source line. */
+/* What feeds the view, for the indicator dot beside the gear and the Camera page's source line. */
 enum { CHAKRA_SOURCE_NONE, CHAKRA_SOURCE_CAMERA, CHAKRA_SOURCE_VIDEO, CHAKRA_SOURCE_DEMO };
 
 typedef struct chakra_core *chakra_core_handle_t;
@@ -122,9 +122,17 @@ void chakra_settings_detect(const chakra_settings_t *s, chakra_detect_config_t *
 esp_gsp_err_t chakra_core_create(esp_gsp_handle_t ui, const chakra_core_config_t *config, chakra_core_handle_t *out);
 esp_gsp_err_t chakra_core_destroy(chakra_core_handle_t *handle);
 
-/** Top bar: "H:MM" or "--:--"; dot 0 off, 1 connecting, 2 connected, 3 simulator. UI task only. */
+/** Top bar: "H:MM" or "--:--". Connection 0 off, 1 connecting, 2 connected, 3 simulator: kept, not
+ *  drawn (the top bar's dot is the camera and microphone indicator, DESIGN.md). UI task only. */
 void chakra_core_set_clock(chakra_core_handle_t c, const char *hhmm);
 void chakra_core_set_connection(chakra_core_handle_t c, int state);
+
+/* The spectrum on screen: a window of CHAKRA_VIEW_BANDS of the detection's semitone bands, the
+ * octave of the last locked tone (3 until one locks, 3..5) with three semitones either side, so
+ * the chakra dots C .. B always stand under the bands 3, 5, 7, 8, 10, 12 and 14. */
+#define CHAKRA_VIEW_BANDS 18
+/** The MIDI note of the window's first band (A2 = 45 for octave 3); the screen lamp gets the same. */
+int chakra_core_band_window(chakra_core_handle_t c);
 
 /* What the local AI sound gate hears now. The heard pill always shows it; with settings.ai on it
  * also leads: a bowl-like sound lets the detection change the colour for the next 2 s; anything
@@ -140,15 +148,15 @@ void chakra_core_set_lamps(chakra_core_handle_t c, const chakra_lamp_t *lamps, i
  *  (the caller keeps and frees its buffer); the one image slot is reused for every frame. Ignored
  *  while the camera is off in the settings. Returns false for a frame of another size. UI task only. */
 bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t size);
-/** Instrument mark `index` (0..CHAKRA_BOXES-1): label ("Singing bowl"), box normalised to the view
+/** Instrument mark `index` (0..CHAKRA_BOXES-1): label ("Singing bowl", "Bowl C"), box normalised to the view
  *  (0..1 from the top left), confidence 0..1, and whether it is being played (struck or rubbed now:
- *  a hand or mallet moves on it). A seen mark is drawn quiet (grey), a played one in the light's
- *  colour with "playing" in its tag. Shown while the Boxes setting is on. UI task only. */
+ *  a hand or mallet moves on it). A seen mark is drawn quiet (grey), a played one thick and amber;
+ *  the tag shows only the label, short ("Bowl"). Shown while the Boxes setting is on. UI task only. */
 void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, float x, float y, float w, float h,
                          float confidence, bool played);
 /** Hides every mark (the detector sees nothing, or its frame is older than the picture). */
 void chakra_core_clear_boxes(chakra_core_handle_t c);
-/** The camera's source: kind (CHAKRA_SOURCE_*) for the mode mark, text as one quiet line on the
+/** The camera's source: kind (CHAKRA_SOURCE_*) for the indicator dot, text as one quiet line on the
  *  Camera page ("Mac camera · 368 × 276", "Video Gong.webm", "No camera yet"). */
 void chakra_core_set_camera_source(chakra_core_handle_t c, int kind, const char *text);
 /** The last frame's mean luma 0..255 (Rec. 601 Y), measured where the pixels are; drives the

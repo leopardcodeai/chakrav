@@ -45,9 +45,10 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 | Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (676670f) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
 | Live-Kamerabild, Mac-Kamera, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`) |
-| Instrument-Boxen mit Beschriftung, bis zu 4 | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
-| Pillen "gehört" und "gesehen", kleines Spektrum | laufen |
-| Modus-Zeichen neben dem Zahnrad: Mikrofon (nur Ton), Kamera, Video oder Demo, mit dem Verbindungspunkt | läuft |
+| Instrument-Boxen mit kurzer Beschriftung ("Schale", "Schale C"), bis zu 7, eine je Chakra-Schale | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
+| Pille "gehört" (oranger Punkt, solange sie hört), Pille "gesehen" (grüner Punkt, solange sie sieht) | laufen |
+| Spektrum: ein Band je Halbton, die Oktave des erkannten Tons und drei Halbtöne zu jeder Seite (A2 bis D4 für Oktave 3), sein Band in der Farbe seines Chakras; darunter die sieben Chakra-Punkte an ihren Tönen | läuft |
+| Anzeigepunkt neben dem Zahnrad, wie bei iOS: grün, solange eine Kamera oder ein Video das Bild liefert, orange, solange nur das Mikrofon hört, grau für die Demo-Szene; kein Verbindungspunkt | läuft |
 | Kameralicht: Aus, An, Auto (Standard; an, solange das Bild dunkel ist) | läuft im Simulator (die Mac-Kamera hat kein Licht, es wird gemeldet); auf dem Board ein markiertes TODO für die Blitz-LED des Moduls |
 | Einstellungen: Einstellungen, Anbindungen, **Kamera** (an, Boxen, fps, Cloud-KI) | laufen; auf dem Board als Einstellungsversion 5 gespeichert |
 | Cloud-KI (experimentell) | ein **Platzhalter**: die Einstellung und `tools/cloud_vision.py` gibt es, in v0 wird nichts gesendet |
@@ -105,7 +106,7 @@ nicht Teil dieses Repositorys) hat eine Kachel ChakraV:
 
 ## Gestaltung
 
-Nach unseren Mosaico-Gestaltungsregeln (DESIGN.md im Workspace): obere Leiste mit Titel, Uhr, Punkt und Zahnrad; Inter; Pillen h/2; wenig
+Nach unseren Mosaico-Gestaltungsregeln (DESIGN.md im Workspace): obere Leiste mit Titel, Uhr, Kamera- und Mikrofonpunkt und Zahnrad; Inter; Pillen h/2; wenig
 Text; Englisch zuerst, Deutsch in den Einstellungen. Der Rahmen ist 28 px breit (20 px war die andere
 Variante; 28 wirkt mehr wie Licht). Seine Innenkante folgt dem Bildschirmradius minus Rahmen, mindestens
 8 px; zwei dunkle Schleier lassen ihn weich nach innen auslaufen, weil ESP-GSP keine Unschärfe kennt. Das

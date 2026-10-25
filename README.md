@@ -44,9 +44,10 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 | Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (676670f) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
 | Live camera view, Mac camera, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`) |
-| Instrument boxes with label pills, up to 4 | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
-| Heard and seen pills, small spectrum | work |
-| Mode mark beside the gear: microphone (sound only), camera, video or demo glyph, with the connection dot | works |
+| Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
+| Heard pill (orange dot while it hears), seen pill (green dot while it sees) | work |
+| Spectrum: one band a semitone, the locked tone's octave and three semitones either side (A2 to D4 for octave 3), its band in its chakra's colour; the seven chakra dots under their notes | works |
+| Indicator dot beside the gear, as on iOS: green while a camera or a video feeds the view, orange while only the microphone listens, grey for the demo scene; no connection dot | works |
 | Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board a marked TODO for the module's flash LED |
 | Settings: Settings, Connections, **Camera** (on, boxes, fps, Cloud AI) | work; stored as settings version 5 on the board |
 | Cloud AI (experimental) | a **stub**: the setting and `tools/cloud_vision.py` exist, nothing is sent in v0 |
@@ -107,15 +108,15 @@ not part of this repository) has a ChakraV tile:
 | Line | Meaning |
 |---|---|
 | `frame\t<path>\t<luma>` | a JPEG of exactly 368 x 276, read at once; its mean luma drives the light's Auto |
-| `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 4 |
-| `source\t<text>\t<camera\|video\|demo>` | the Camera page's source line and the mode mark |
+| `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 7 |
+| `source\t<text>\t<camera\|video\|demo>` | the Camera page's source line and the indicator dot |
 | `sound\t<bowl\|other\|none>\t<strike>` | the local AI sound gate (`tools/ai_gate.py`); while none has spoken for 5 s the detection leads alone |
 | `camera\t<on>\t<boxes>\t<fps>\t<cloud>` | back to every client: the Camera settings |
 | `camlight\t<on>\t<dark>` | back to every client: the camera light should be on or off |
 
 ## Design
 
-Per our Mosaico design rules (DESIGN.md in the workspace): top bar with title, clock, dot and gear; Inter; pills h/2; little text;
+Per our Mosaico design rules (DESIGN.md in the workspace): top bar with title, clock, the camera and microphone dot and gear; Inter; pills h/2; little text;
 English first, German in the settings. The frame is 28 px (20 px was the other variant; 28 reads more as
 light). Its inner edge runs at the screen's radius minus the frame, at least 8 px; two dark veils make it
 fade softly inward, because ESP-GSP has no blur. The camera view keeps the screen's 20 px radius through

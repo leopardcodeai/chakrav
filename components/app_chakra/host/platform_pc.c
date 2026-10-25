@@ -9,7 +9,8 @@
 // close\n for the hold gesture, and while a chakra is locked, at most twice a second when it
 // changes, the reading for a lamp page:
 // reading\t<chakra>\t<english>\t<german>\t<sanskrit>\t<note+octave>\t<Hz>\t<cents>\t<solfeggio Hz>\t<en|de>\n
-// and about five times a second the spectrum for the page's faint band: bars\t<16 values 0..100>\n
+// and about five times a second the spectrum window the screen shows, for the page's faint band:
+// bars\t<MIDI note of the first band>\t<18 values 0..100>\n (one band a semitone, chakra_core.h)
 // Line port (CHAKRA_AI_PORT, default 8711; up to LINE_CLIENTS at once: the AI sound gate through
 // chakra_feed.py --ai and the camera through tools/camera_live.py), in:
 //   sound\t<bowl|other|none>\t<strike 0|1>              the AI sound gate's verdict
@@ -17,7 +18,7 @@
 //                                                        its mean luma 0..255 drives the light's Auto
 //   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>[\t<played 0|1>]   a mark, normalised 0..1; a frame's boxes follow it
 //   boxes\tclear                                          before each frame's boxes
-//   source\t<text>[\t<camera|video|demo>]                 the Camera page's source line and the mode mark
+//   source\t<text>[\t<camera|video|demo>]                 the Camera page's source line and the indicator dot
 // out, to every line client when it connects and on each change of the settings:
 //   camera\t<on 0|1>\t<boxes 0|1>\t<fps 1|2|4>\t<cloud 0|1>
 // and whenever the camera's light should change (Off, On, Auto's verdict):
@@ -327,8 +328,9 @@ static void send_reading(const chakra_reading_t *r)
     send_text(line);
 }
 
-/* The spectrum for a lamp page's faint band (owner 25.10.2026: "damit man sieht, es arbeitet"):
- * bars\t<16 values 0..100, comma-separated>, about five times a second while the screen lamp is ticked.
+/* The spectrum window for a lamp page's faint band (owner 25.10.2026: "damit man sieht, es arbeitet"):
+ * bars\t<MIDI note of the first band>\t<CHAKRA_VIEW_BANDS values 0..100, comma-separated>, the same
+ * window the screen shows, about five times a second while the screen lamp is ticked.
  * Shared lamp behaviour: the same as in the chakra app (ChakraA). */
 static void send_bars(const chakra_reading_t *r)
 {
@@ -338,10 +340,12 @@ static void send_bars(const chakra_reading_t *r)
         return;
     }
     last_ms = t;
-    char line[16 + CHAKRA_BARS * 4];
-    int n = snprintf(line, sizeof(line), "bars\t");
-    for (int i = 0; i < CHAKRA_BARS && n < (int)sizeof(line) - 5; ++i) {
-        n += snprintf(line + n, sizeof(line) - (size_t)n, i ? ",%u" : "%u", (unsigned)r->bars[i]);
+    const int first = chakra_core_band_window(host.core);
+    char line[24 + CHAKRA_VIEW_BANDS * 4];
+    int n = snprintf(line, sizeof(line), "bars\t%d\t", first);
+    for (int i = 0; i < CHAKRA_VIEW_BANDS && n < (int)sizeof(line) - 5; ++i) {
+        n += snprintf(line + n, sizeof(line) - (size_t)n, i ? ",%u" : "%u",
+                      (unsigned)r->bars[first - CHAKRA_BAR_MIDI0 + i]);
     }
     snprintf(line + n, sizeof(line) - (size_t)n, "\n");
     send_text(line);
