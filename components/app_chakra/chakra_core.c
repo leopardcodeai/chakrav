@@ -80,7 +80,10 @@ static const char *const LABELS[][3] = {
 /* The camera light's Auto (chakra_core_set_frame_luma): on after the picture's mean luma stayed
  * below LUMA_DARK for LIGHT_SWITCH_MS. The light brightens the picture itself, so it goes off again
  * only after LIGHT_MIN_ON_MS and once the luma is LUMA_BRIGHTER above what it was with the light
- * alone (measured LIGHT_BASE_MS after switching on): the room itself got brighter. */
+ * alone (measured LIGHT_BASE_MS after switching on): the room itself got brighter.
+ * CHECK ON THE BOARD: LUMA_DARK was chosen on videos and the Mac camera. The V1.4 module's SC101IOT
+ * has 2.9 um pixels (the V1.2 OV3640 1.75 um) and sees more in a dim room, so its picture may stay
+ * above 50 where the OV3640's fell below; measure in the sound healing room before changing it. */
 #define LUMA_DARK 50
 #define LUMA_BRIGHTER 30
 #define LIGHT_SWITCH_MS 2000

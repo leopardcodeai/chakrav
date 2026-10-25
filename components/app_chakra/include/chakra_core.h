@@ -22,8 +22,12 @@ extern "C" {
 
 #define CHAKRA_LAMPS 4  // rows in the settings' lamp list (ui/make_scene.py LAMPS)
 #define CHAKRA_BOXES 7  // instrument marks over the camera view, one a chakra bowl (ui/make_scene.py BOXES)
-#define CHAKRA_CAM_W 368  // the camera view in pixels; a frame must have exactly this size
-#define CHAKRA_CAM_H 276
+/* The camera view in pixels, square: the centre of the upright picture, as the camera kit's preview
+ * shows it. A frame must have exactly this size. 270 = 720 x 6/16 (the PPA scales in 1/16 steps):
+ * all of the V1.4 SC101IOT's 720 px short side, the centre 720 of the V1.2 OV3640's 768
+ * (ui/make_scene.py CAM_W, tools/camera_live.py VIEW, main/camera.c). */
+#define CHAKRA_CAM_W 270
+#define CHAKRA_CAM_H 270
 
 /* CHAKRA_LAMP_SCREEN: a full-screen colour page (a TV or laptop browser in fullscreen is the lamp);
  * its address stands large on the Connections page. New kinds go at the end: rows keep their kind. */
@@ -157,7 +161,7 @@ void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, f
 /** Hides every mark (the detector sees nothing, or its frame is older than the picture). */
 void chakra_core_clear_boxes(chakra_core_handle_t c);
 /** The camera's source: kind (CHAKRA_SOURCE_*) for the indicator dot, text as one quiet line on the
- *  Camera page ("Mac camera · 368 × 276", "Video Gong.webm", "No camera yet"). */
+ *  Camera page ("SC101IOT v1.4 · 1280 × 720", "Video · SC101IOT v1.4 emulated", "No camera yet"). */
 void chakra_core_set_camera_source(chakra_core_handle_t c, int kind, const char *text);
 /** The last frame's mean luma 0..255 (Rec. 601 Y), measured where the pixels are; drives the
  *  light's Auto. Call it after chakra_core_set_frame, -1 when unknown. */

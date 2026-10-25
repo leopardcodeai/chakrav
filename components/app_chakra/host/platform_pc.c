@@ -45,7 +45,7 @@
 #define CHUNK 4096
 #define LINE_CLIENTS 4
 #define LINE_MAX 512
-#define FRAME_MAX (512 * 1024)  // a 368 x 276 JPEG is about 20 to 40 KB
+#define FRAME_MAX (512 * 1024)  // a 270 x 270 JPEG is about 15 to 30 KB
 
 static struct {
     chakra_core_handle_t core;

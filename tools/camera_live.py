@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Feeds camera frames and instrument marks into the ChakraV simulator.
 
-What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBook Pro Camera"),
-      scales and crops each to the view's exact size (368 x 276, chakra_core.h CHAKRA_CAM_W/H),
-      writes it as a JPEG to one temp file that every frame overwrites, and tells the app on its
-      line port (127.0.0.1:8711, CHAKRA_AI_PORT):
+What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBook Pro Camera") or
+      a video, emulates what the ESP-Mosaico's camera module gives the app (--module, below),
+      writes each frame as a JPEG of the view's exact size (270 x 270, chakra_core.h
+      CHAKRA_CAM_W/H) to one temp file that every frame overwrites, and tells the app on its line
+      port (127.0.0.1:8711, CHAKRA_AI_PORT):
         source<TAB><text><TAB><camera|video|demo> once: the Camera page's source line, the mode mark
         frame<TAB><path><TAB><luma>               per frame; the app reads the file at once, the mean
                                                   luma (0..255) drives the camera light's Auto
@@ -24,6 +25,18 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
         --detect      real marks: each frame goes to tools/detect_owl.py (OWL-ViT, zero-shot, on the Mac)
         --demo-boxes  the stub detector: with --demo the drawn instruments' true boxes, over the
                       real camera plausible moving boxes that mark nothing real.
+        --module      v1.4 (default: the SC101IOT module the board is expected with) or v1.2
+                      (OV3640). The module sits sideways, so its upright picture is portrait:
+                      V1.4 720 x 1280 (9:16), V1.2 768 x 1024 (3:4). The app shows its centre
+                      square, as the camera kit's preview does: 720 x 720 scaled to 270 (the board's
+                      PPA scales in 1/16 steps, 720 x 6/16 = 270), the same 720 on V1.2. A --video
+                      becomes the upright frame (scaled to cover it, centred; the owner's portrait
+                      9:16 videos fit V1.4 exactly), then that square. The Mac camera's 16:9
+                      picture cannot hold the upright frame, but holds its square: the centre of
+                      the Mac's picture at the square's field of view (V1.4 about 42 x 42 degrees,
+                      the docs' 73 x 42 lens; V1.2 about 41.6, from 68 degrees diagonal), limited
+                      to what the Mac sees (its 70 degrees are an estimate, as in apps/camera
+                      cam_twin.py).
       Without --demo-boxes no boxes are sent: there is no detector yet, and the seen pill says so.
       Real detection is the next step (README, "Next"): an open-vocabulary detector such as
       OWL-ViT on the Mac first, later a trained ESPDet-Pico on the ESP32-S31.
@@ -37,8 +50,13 @@ Pitfalls:
     launcher's parent). Denied, ffmpeg fails at once: this script says so and waits; it never
     tries another way. Allow it in System Settings, Privacy & Security, Camera.
   * The camera runs at 30 fps natively; ffmpeg's fps filter picks the 1, 2 or 4 frames a second.
-  * The app takes only frames of exactly 368 x 276 (images play at their native size in GSP).
-Usage:  camera_live.py [--demo] [--demo-boxes] [--port 8711] [--device "MacBook Pro Camera"] [--wait]
+  * The app takes only frames of exactly 270 x 270 (images play at their native size in GSP).
+  * The detector gets the same square at twice the size (540 x 540): OWL-ViT scores the bowls far
+    better there; the app gets its 270 scaled from it. Boxes are normalised, so both agree.
+  * Not emulated: the sensor's colour, exposure, noise and lens (manual focus), and its frame
+    rate (the app asks for 1, 2 or 4 fps). apps/camera cam_twin.py models the module further.
+Usage:  camera_live.py [--demo] [--demo-boxes] [--module v1.4|v1.2] [--video FILE] [--detect] [--port 8711]
+                      [--device "MacBook Pro Camera"] [--wait]
         camera_live.py --demo --demo-boxes       the screenshots' source (tools/screens.py)
         camera_live.py --dry-run     says what it would open and send, opens nothing
 """
@@ -55,8 +73,50 @@ import threading
 import time
 from pathlib import Path
 
-W, H = 368, 276  # chakra_core.h CHAKRA_CAM_W, CHAKRA_CAM_H
+VIEW = 270        # the square view: chakra_core.h CHAKRA_CAM_W = CHAKRA_CAM_H, ui/make_scene.py CAM_W
+W, H = VIEW, VIEW
+CROP = 720        # the upright square the board scales to VIEW: 720 x 6/16 (main/camera.c)
 DEFAULT_DEVICE = "MacBook Pro Camera"
+# The ESP-Mosaico camera modules (Espressif user_guide_camera; apps/camera cam_twin.py MODULES).
+# raw: the sensor frame as it comes (landscape); the module is mounted sideways, so the upright
+# picture is raw turned: portrait. fov: the upright picture's short side in degrees.
+MODULES = {
+    "v1.4": {"sensor": "SC101IOT", "raw": (1280, 720), "fps": 15, "fov": 42.0},  # docs H 73 / V 42, 3.1 mm F1.8
+    "v1.2": {"sensor": "OV3640", "raw": (1024, 768), "fps": 25, "fov": 44.1},    # docs 68 diagonal: 56.7 x 44.1
+}
+MAC_SIZE, MAC_HFOV = (1920, 1080), 70.0  # the Mac's picture; its field of view is an estimate (cam_twin.py)
+
+
+def module_view(module: str) -> dict:
+    """What the module gives the app: the upright frame, the square taken from it, its angle."""
+    m = MODULES[module]
+    uw, uh = m["raw"][1], m["raw"][0]  # upright: portrait
+    crop = min(CROP, uw)
+    t = math.tan(math.radians(m["fov"] / 2)) * crop / uw
+    return {**m, "module": module, "upright": (uw, uh), "crop": crop, "square_deg": math.degrees(2 * math.atan(t)),
+            "tan": t}
+
+
+def view_filter(module: str, fps: int, scale: int = 1, video: bool = True) -> tuple[str, str]:
+    """The ffmpeg filter that makes the app's square from a video or the Mac's camera, and a note
+    of what it emulates. scale 2: the detector's double size."""
+    v = module_view(module)
+    side = VIEW * scale
+    if video:
+        uw, uh = v["upright"]
+        c = v["crop"]
+        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
+              f"crop={c}:{c},scale={side}:{side}:flags=area")
+        return vf, f"upright {uw} x {uh}, square {c} x {c}, about {v['square_deg']:.0f} deg"
+    # The share of the Mac's picture height that holds the square's angle; as an ffmpeg expression,
+    # so it holds whatever size avfoundation opens (1920 x 1080 assumed for the angle).
+    mw, mh = MAC_SIZE
+    m_tv = math.tan(math.radians(MAC_HFOV / 2)) * mh / mw
+    k = min(1.0, v["tan"] / m_tv)
+    deg = math.degrees(2 * math.atan(m_tv * k))
+    c = f"trunc(ih*{k:.4f}/2)*2"
+    vf = f"fps={fps},crop='{c}':'{c}',scale={side}:{side}:flags=area"
+    return vf, f"Mac square {k:.0%} of its height, about {deg:.0f} deg (module {v['square_deg']:.0f})"
 
 
 class App:
@@ -137,11 +197,11 @@ class FrameFile:
 
 def demo_objects(t: float) -> list[tuple[str, float, float, float, float, float]]:
     """Where the drawn instruments are at time t: (label, x, y, w, h, conf), normalised."""
-    bx = 0.07 + 0.04 * math.sin(t * 0.5)
-    objs = [("Singing bowl", bx, 0.40, 0.38, 0.44, 0.90 + 0.05 * math.sin(t * 1.3))]
-    objs.append(("Tuning fork", 0.52, 0.24 + 0.03 * math.sin(t * 0.8), 0.12, 0.54, 0.78 + 0.08 * math.sin(t * 0.9)))
+    bx = 0.05 + 0.03 * math.sin(t * 0.5)  # laid out for the square view
+    objs = [("Singing bowl", bx, 0.46, 0.46, 0.40, 0.90 + 0.05 * math.sin(t * 1.3))]
+    objs.append(("Tuning fork", 0.57, 0.22 + 0.03 * math.sin(t * 0.8), 0.15, 0.56, 0.78 + 0.08 * math.sin(t * 0.9)))
     if math.sin(t * 0.25) > -0.3:  # the chimes leave the picture now and then
-        objs.append(("Chimes", 0.84, 0.06, 0.14, 0.44, 0.71 + 0.06 * math.sin(t * 1.7)))
+        objs.append(("Chimes", 0.80, 0.05, 0.17, 0.40, 0.71 + 0.06 * math.sin(t * 1.7)))
     return objs
 
 
@@ -208,10 +268,11 @@ class StubBoxes:
 
 # ------------------------------------------------------------------ the camera --
 
-def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 1) -> subprocess.Popen:
-    """Frames of the view's crop; scale 2 gives the detector twice the size (app_frame() makes the app's)."""
-    w, h = W * scale, H * scale
-    vf = f"fps={fps},scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
+def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 1,
+                  module: str = "v1.4") -> subprocess.Popen:
+    """Frames of the module's square (view_filter); scale 2 gives the detector twice the size
+    (app_frame() makes the app's)."""
+    vf, _ = view_filter(module, fps, scale, video=bool(video))
     # A video file instead of the camera: in real time, looped, its sound left to chakra_feed.py.
     src = ["-re", "-stream_loop", "-1", "-i", video, "-an"] if video else \
         ["-f", "avfoundation", "-framerate", "30", "-i", f"{device}:none"]
@@ -296,7 +357,8 @@ def send_frame(app: App, files: FrameFile, jpeg: bytes, boxes) -> None:
     app.send(lines)
 
 
-def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, video: str | None = None) -> None:
+def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, video: str | None = None,
+               module: str = "v1.4") -> None:
     told = False
     while not app.closed:
         if not app.on:
@@ -305,11 +367,12 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
             continue
         app.changed.clear()
         fps = app.fps
-        # OWL-ViT finds the bowls at 0.05 in the view's 368 x 276 and at 0.2 to 0.4 in twice that
+        # OWL-ViT found the bowls at 0.05 in the former 368 x 276 view and at 0.2 to 0.4 in twice that
         # (25.10.2026, the owner's video): the detector gets the double size, the app its own.
         big = isinstance(stub, Detector)
-        proc = ffmpeg_camera(device, fps, video, 2 if big else 1)
-        print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps", flush=True)
+        proc = ffmpeg_camera(device, fps, video, 2 if big else 1, module)
+        print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps, "
+              f"module {module}: {view_filter(module, fps, video=bool(video))[1]}", flush=True)
         n = 0
         for jpeg in jpeg_frames(proc):
             n += 1
@@ -359,26 +422,33 @@ def main():
                     help="real instrument marks with OWL-ViT on the Mac (tools/detect_owl.py, the AI venv)")
     ap.add_argument("--demo-boxes", action="store_true",
                     help="stub boxes (no detector yet): the drawn scene's true ones, or drifting ones over the camera")
+    ap.add_argument("--module", choices=sorted(MODULES), default="v1.4",
+                    help="the camera module to emulate: v1.4 SC101IOT (default) or v1.2 OV3640")
     ap.add_argument("--wait", action="store_true", help="retry for 2 min until the simulator listens")
     ap.add_argument("--dry-run", action="store_true", help="say what would happen, open nothing")
     a = ap.parse_args()
-    source = "Demo scene" if a.demo else f"Video {os.path.basename(a.video)[:18]}" if a.video else "Mac camera"
+    mod = MODULES[a.module]
+    emulated = f"{mod['sensor']} {a.module} emulated"
+    # The source line names what the board would have: the module, emulated from a video or the Mac.
+    source = f"Demo scene · {W} × {H}" if a.demo else f"Video · {emulated}" if a.video else f"Mac · {emulated}"
     if a.video and not os.path.exists(a.video):
         sys.exit(f"no such video: {a.video}")
     if a.dry_run:
-        what = ("a drawn demo scene" if a.demo else f"ffmpeg avfoundation '{a.device}' scaled to {W}x{H}") + \
-            (" with stub boxes" if a.demo_boxes else ", no boxes")
-        print(f"would connect to 127.0.0.1:{a.port}, send 'source {source} · {W} × {H}', then {what}, "
-              f"one JPEG in a private temp folder, overwritten per frame")
+        vf, note = view_filter(a.module, 2, 2 if a.detect else 1, video=bool(a.video))
+        what = ("a drawn demo scene" if a.demo else
+                f"ffmpeg {'video' if a.video else 'avfoundation ' + repr(a.device)} -vf {vf} ({note})") + \
+            (" with stub boxes" if a.demo_boxes else ", OWL-ViT boxes" if a.detect else ", no boxes")
+        print(f"would connect to 127.0.0.1:{a.port}, send 'source {source}', then {what}, "
+              f"one {W} x {H} JPEG in a private temp folder, overwritten per frame")
         return
     if not a.demo and not shutil.which("ffmpeg"):
         sys.exit("ffmpeg missing: brew install ffmpeg")
     app = App(a.port, a.wait)
     kind = "demo" if a.demo else "video" if a.video else "camera"
-    size = "" if a.video else f" · {W} × {H}"  # a video's name is long enough for the line
-    app.send(f"source\t{source}{size}" + (" · cloud stub" if cloud_key() else "") + f"\t{kind}\n")
+    app.send(f"source\t{source}" + (" · cloud stub" if cloud_key() else "") + f"\t{kind}\n")
     files = FrameFile()
-    print(f"{source} to 127.0.0.1:{a.port}; Ctrl-C stops", flush=True)
+    print(f"{source}{' (' + os.path.basename(a.video) + ')' if a.video else ''} to 127.0.0.1:{a.port}; "
+          f"Ctrl-C stops", flush=True)
     try:
         if a.demo:
             run_demo(app, files, a.demo_boxes)
@@ -386,7 +456,7 @@ def main():
             marks = Detector() if a.detect and os.path.exists(Detector.VENV) else StubBoxes() if a.demo_boxes else None
             if a.detect and not isinstance(marks, Detector):
                 print("no AI venv: --detect needs ~/Library/Application Support/LeopardCode/chakra/ai_venv_eat", flush=True)
-            run_camera(app, files, a.device, marks, a.video)
+            run_camera(app, files, a.device, marks, a.video, a.module)
     except KeyboardInterrupt:
         pass
     finally:

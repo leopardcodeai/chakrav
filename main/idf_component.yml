@@ -3,6 +3,10 @@ dependencies:
   esp-mosaico-bsp:
     version: "*"
     override_path: "../../../workspace/submodule/esp-mosaico-bsp/components/esp-mosaico-bsp"
+  # The camera module (V1.4 SC101IOT, V1.2 OV3640) in the left slot: main/camera.c
+  mosaico_module_camera:
+    version: "*"
+    override_path: "../../../workspace/submodule/esp-mosaico-bsp/components/mosaico_module_camera"
   esp_iris:
     version: "*"
     override_path: "../../../workspace/submodule/esp-mosaico-utils/ESP-Iris/components/esp_iris"

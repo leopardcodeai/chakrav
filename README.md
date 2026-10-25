@@ -43,19 +43,42 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 |---|---|
 | Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (676670f) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
-| Live camera view, Mac camera, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`) |
+| Live camera view: a square like the camera kit's preview, 270 x 270, from the Mac camera or a video, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`, emulating the V1.4 or V1.2 module) |
 | Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
 | Heard pill (orange dot while it hears), seen pill (green dot while it sees) | work |
 | Spectrum: one band a semitone, the locked tone's octave and three semitones either side (A2 to D4 for octave 3), its band in its chakra's colour; the seven chakra dots under their notes | works |
 | Indicator dot beside the gear, as on iOS: green while a camera or a video feeds the view, orange while only the microphone listens, grey for the demo scene; the connection is the Wi-Fi glyph between dot and gear | works |
-| Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board a marked TODO for the module's flash LED |
+| Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board the module's flash LEDs (GPIO34), written, not yet run |
 | Settings: Settings, Connections, **Camera** (on, boxes, fps, Cloud AI) | work; stored as settings version 5 on the board |
 | Cloud AI (experimental) | a **stub**: the setting and `tools/cloud_vision.py` exist, nothing is sent in v0 |
-| Camera on the board | **not yet**: the Mosaico camera driver is not wired in (`main/main.c`, TODO camera) |
+| Camera on the board | **written, builds, not yet run** (the board is on order): `main/camera.c` opens the module, tells V1.4 from V1.2, makes the square view and its luma, switches the flash |
 
 **There is no real detector yet.** The boxes in the screenshots are the demo scene's own positions; over
 the real camera, `--demo-boxes` sends boxes that drift plausibly and mark nothing. Without it no boxes are
 sent and the seen pill says "Nothing".
+
+## Hardware: the camera module
+
+The ESP-Mosaico is expected with the **camera module V1.4 (SC101IOT)**; the older **V1.2 (OV3640)**
+works too. Both sit in the **left slot** only. The app finds out which one it has from the format its
+sensor opens with (the BSP reads the sensor's ID first) and names it on the Camera page
+("SC101IOT v1.4 · 1280 × 720").
+
+| Camera modules | V1.4 (expected) | V1.2 |
+|---|---|---|
+| Sensor | SC101IOT, 1 MP, 2.9 µm pixels (better in a dim room) | OV3640, 3 MP, 1.75 µm pixels |
+| Frame | 1280 x 720 UYVY, 15 fps | 1024 x 768 UYVY, 25 fps |
+| Lens | 3.1 mm F1.8, **manual focus**, 73 x 42 degrees | 68 degrees diagonal |
+| Upright picture (the module sits sideways) | 720 x 1280, portrait 9:16 | 768 x 1024, portrait 3:4 |
+| The app's square | the whole 720 px width, about 42 x 42 degrees | the centre 720 of 768, about 42 x 42 degrees |
+| Flash | two LEDs on GPIO34, LOW = on, open drain (off when the host sleeps) | same |
+
+- **The view is square**, the centre of the upright picture, as the camera kit's preview shows it:
+  270 x 270 on the screen (720 x 6/16; the board's PPA scales in 1/16 steps).
+- **Focus once.** The V1.4 lens has manual focus: turn it once to the distance of the bowls, with the
+  live view open, then leave it.
+- **Light.** The flash LEDs are the camera light (Off, On, Auto). How long they may stay on (heat)
+  and Auto's dark threshold with the brighter V1.4 sensor are still to be measured on the board.
 
 ## AI: on the device first, the cloud to compare
 
@@ -81,12 +104,20 @@ workspace next to this folder (`../../workspace`).
 ./sim.sh            # the app alone; feed it yourself:
 python3 tools/chakra_feed.py tone 174.6           # one tone (Heart)
 python3 tools/camera_live.py --demo --demo-boxes  # the demo scene
+python3 tools/camera_live.py --video FILE --detect  # a video as the V1.4 module would see it (--module v1.2)
 python3 tools/screens.py /tmp/chakrav-shots       # the four screenshots above (demo sources only)
 ```
 
 Ports: audio on 8710 (`CHAKRA_FEED_PORT`), lines on 8711 (`CHAKRA_AI_PORT`: the AI gate's verdicts and the
 camera's frames and boxes), so ChakraV and Chakra never share a port. The preview takes 3222 or the next
 free port; `sim.sh` prints it.
+
+**The module, emulated.** `camera_live.py --module v1.4` (default) or `v1.2` turns a video into the
+module's upright picture (scaled to cover it, centred; portrait 9:16 videos fit V1.4 exactly), then
+takes its centre square for the app, and the same square at twice the size (540 x 540) for the
+detector, which scores bowls far better there. From the Mac camera it takes the centre square of the
+Mac's picture at the module's angle. The Camera page's source line says what is emulated
+("Video · SC101IOT v1.4 emulated").
 
 **Camera and privacy.** macOS asks once for the camera permission of the app that starts
 `camera_live.py`; if it is refused, the script says so and waits, it never works around it. Frames exist
@@ -107,7 +138,7 @@ not part of this repository) has a ChakraV tile:
 
 | Line | Meaning |
 |---|---|
-| `frame\t<path>\t<luma>` | a JPEG of exactly 368 x 276, read at once; its mean luma drives the light's Auto |
+| `frame\t<path>\t<luma>` | a JPEG of exactly 270 x 270, read at once; its mean luma drives the light's Auto |
 | `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 7 |
 | `source\t<text>\t<camera\|video\|demo>` | the Camera page's source line and the indicator dot |
 | `sound\t<bowl\|other\|none>\t<strike>` | the local AI sound gate (`tools/ai_gate.py`); while none has spoken for 5 s the detection leads alone |
@@ -148,8 +179,9 @@ Design references (25.10.2026):
      jump with the background.
    - **Does the light help?** The camera light's Auto switched on after 2 s in the dark video and stayed on.
      On the board, measure the detector with and without the flash LED, and its heat when left on.
-2. **On the board**: wire in the Mosaico camera (esp_video, see `apps/camera`), then a trained
-   ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
+2. **On the board**: run `main/camera.c` on the real module and check what it marks as CHECK ON THE
+   BOARD (orientation, colours, the encoder at 270 px, the flash's heat, Auto's dark threshold); then a
+   trained ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
 3. Measure the on-device AI on the board: the audio gate and the detector, latency and memory.
 4. The real cloud call behind Cloud AI, to compare its boxes with the on-device ones.
 5. Join what is heard and what is seen: a strike on the bowl that is marked lights its box.
@@ -160,7 +192,8 @@ Design references (25.10.2026):
 |---|---|
 | Detection: FFT, harmonics, steadiness, mappings | `components/app_chakra/chakra_detect.c` |
 | Screen: frame, camera view, boxes, pills, settings, hold to close | `components/app_chakra/chakra_core.c`, scene `ui/make_scene.py` |
-| Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 5) | `main/main.c` |
+| Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 6) | `main/main.c` |
+| Board: the camera module, the square view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |
 | Simulator side and feeders | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |
 | Screenshots; brightness, contrast, change and the light's Auto over a video | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
 

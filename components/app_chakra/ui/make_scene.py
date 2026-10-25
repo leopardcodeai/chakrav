@@ -4,8 +4,8 @@
 What: ChakraV is the chakra app with a camera. The whole screen is the light: a thick frame in the
       chakra's colour runs around the edge (FRAME px, fading softly into the dark panel inside it,
       faded and kicked by chakra_core.c). Inside the panel: the top bar (title, clock, dot, gear),
-      the live camera view in the centre with up to seven instrument marks over it (a coloured box
-      with a label pill each), and below it the chakra's name with the note and Hz, a "heard" pill
+      the live camera view in the centre, a square like the camera kit's preview, with up to seven
+      instrument marks over it (a coloured box with a label pill each), and below it the chakra's name with the note and Hz, a "heard" pill
       (what the AI sound gate hears), a "seen" pill (what the boxes show) and a small spectrum (one
       band a semitone, the tone's octave and a little more) with the seven chakra dots under it.
       The gear opens the settings in three tabs: Settings, Connections and Camera (camera on or
@@ -21,8 +21,16 @@ Pitfalls:
   * ESP-GSP 1.5.1 rounds an image's background and border, not its pixels, and clip_children is
     rectangular: a ring in the panel's colour masks the camera's corners (DESIGN.md, Media).
   * The camera frame is a runtime JPEG (chakra_core_set_frame) of exactly CAM_W x CAM_H; one image
-    slot is reused. Decoded at 4 bytes a pixel it takes about 400 KB, so a frame and its pending
+    slot is reused. Decoded at 4 bytes a pixel it takes about 290 KB, so a frame and its pending
     replacement fit the 2 MB image cache with room to spare (the house doorbell's 448 x 336 did not).
+  * The view is square (owner 25.10.2026: "wie bei der Camera-Kit-Kamera"): the centre square of the
+    upright picture. The module sits sideways, so upright is portrait (V1.4 SC101IOT 720 x 1280,
+    V1.2 OV3640 768 x 1024). 270 is 720 x 6/16: the board's PPA scales in steps of 1/16 only
+    (ESP-IDF ppa.rst), so 270 takes V1.4's whole 720 px short side (about 42 x 42 degrees) and the
+    centre 720 of V1.2's 768; it is also the largest such square that leaves room for the rows below
+    (280 would need the kit preview's 640 crop, 288 does not fit). tools/camera_live.py emulates it.
+  * The rows below the view keep their own width (CONTENT_W, the former 368 px view), so the name,
+    the pills and the spectrum do not shrink with the square.
   * Box geometry is a bounded dynamic field, set in pixels inside the camera view (chakra_core.c):
     x and y move the box with its pill. A dynamic w or h resizes only a container's own fill, not
     its border, so the four edges are thin fills (8 setters a box; the core spreads them over ticks).
@@ -44,10 +52,12 @@ SCREEN_RADIUS = 20  # ~/Coding/esp/DESIGN.md
 # The coloured frame's width; the owner asked for 18 to 28. 28 chosen on 25.10.2026 against 20: the light
 # reads as the frame of the room's colour, and the rows below still fit (tools/screens.py --frame).
 FRAME = int(os.environ.get("CHAKRAV_FRAME", "28"))
-CAM_W, CAM_H = 368, 276  # the camera view; chakra_core.h CHAKRA_CAM_W/H, tools/camera_live.py
+CAM_W = CAM_H = 270      # the square camera view; chakra_core.h CHAKRA_CAM_W/H, tools/camera_live.py VIEW
 CAM_X = (480 - CAM_W) // 2
+CONTENT_W = 368          # the rows below the view: name, pills, spectrum (wider than the square)
+CONTENT_X = (480 - CONTENT_W) // 2
 TOP_H = 52               # the top bar inside the panel
-CAM_Y = FRAME + TOP_H + 4
+CAM_Y = FRAME + TOP_H + 8
 BOXES = 7                # chakra_core.h CHAKRA_BOXES: one a chakra bowl
 EDGE, BOX_MIN = 3, 16    # a box's edge width; its smallest width and height
 PLAY_EDGE = 6            # a played box's edges, thicker
@@ -59,7 +69,7 @@ BARS = 18                # the spectrum below the view, one band a semitone: the
 BAR_PITCH, BAR_W = 8, 6  # a band's step and width; chakra_core.c BAR_PITCH, BAR_W
 BAND_NOTE0 = 9           # the window starts on an A (A2 for octave 3), so band j is note (9 + j) % 12
 SPEC_W = BARS * BAR_PITCH - (BAR_PITCH - BAR_W)
-BAR_X0 = CAM_X + CAM_W - SPEC_W
+BAR_X0 = CONTENT_X + CONTENT_W - SPEC_W
 HEARD_W, SEEN_W = 100, 116       # the pills beside it
 NOTE_TO_CHAKRA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 6]  # chakra_detect.c, C .. B
 DOT_NOTES = [0, 2, 4, 5, 7, 9, 11]  # each chakra's dot sits at its natural note, C .. B
@@ -158,9 +168,9 @@ def camera_view():
     # The view's own tile (seen while waiting or with the camera off), then the frame on top.
     add("container", None, None, x=CAM_X, y=CAM_Y, w=CAM_W, h=CAM_H, radius=SCREEN_RADIUS, bg_color=TILE)
     group("grp_cam_wait", None, CAM_X, CAM_Y, CAM_W, CAM_H, hidden=False)
-    text("cam_icon", "grp_cam_wait", (CAM_W - 72) // 2, 86, 72, 72, 72, ICONS, FAINT, align="center",
+    text("cam_icon", "grp_cam_wait", (CAM_W - 72) // 2, CAM_H // 2 - 52, 72, 72, 72, ICONS, FAINT, align="center",
          sample=chr(CAMERA), charset=ICON_CHARSET)
-    text("cam_wait_text", "grp_cam_wait", 0, 172, CAM_W, 26, 17, BOLD, MUTED, align="center",
+    text("cam_wait_text", "grp_cam_wait", 0, CAM_H // 2 + 34, CAM_W, 26, 17, BOLD, MUTED, align="center",
          sample="Waiting for camera", overflow="ellipsis")
     group("grp_cam_img", None, CAM_X, CAM_Y, CAM_W, CAM_H)
     add("image", "cam_img", "grp_cam_img", x=0, y=0, w=CAM_W, h=CAM_H, image="art/cam_placeholder.png",
@@ -174,7 +184,7 @@ def camera_view():
         # bottom move with the box's width and height.
         g = f"grp_box_{i}"
         add("container", g, "box_clip", hidden=True, bind=g, bind_target="visible",
-            x={"default": 20 + 44 * i, "min": 0, "max": CAM_W, "property": "x"},
+            x={"default": 20 + 30 * i, "min": 0, "max": CAM_W, "property": "x"},
             y={"default": 40 + 24 * i, "min": 0, "max": CAM_H, "property": "y"}, w=CAM_W, h=CAM_H, bg_opacity=0)
         dyn_w = {"default": 140, "min": BOX_MIN, "max": CAM_W, "property": "width"}
         dyn_h = {"default": 110, "min": BOX_MIN, "max": CAM_H, "property": "height"}
@@ -218,13 +228,13 @@ def camera_view():
 def below_view():
     # Row 1: the chakra's name left, note and Hz right. Row 2: heard, seen, the small spectrum.
     y1 = CAM_Y + CAM_H + 10
-    text("name_text", None, CAM_X, y1, 176, 32, 26, XBOLD, WHITE, sample="Ready", overflow="ellipsis")
-    text("sub_text", None, CAM_X + 176, y1 + 7, CAM_W - 176, 22, 16, BOLD, MUTED, align="right",
+    text("name_text", None, CONTENT_X, y1, 176, 32, 26, XBOLD, WHITE, sample="Ready", overflow="ellipsis")
+    text("sub_text", None, CONTENT_X + 176, y1 + 7, CONTENT_W - 176, 22, 16, BOLD, MUTED, align="right",
          sample="Strike a bowl or hum", overflow="ellipsis")
     y2 = y1 + 40
-    # Row 2: heard and seen at the left, the spectrum at the right (SPEC_W, from the view's right edge).
-    for key, x, w, code, sample in (("heard", CAM_X, HEARD_W, WAVE, "Bowl"),
-                                    ("seen", CAM_X + HEARD_W + 5, SEEN_W, EYE, "Bowl")):
+    # Row 2: heard and seen at the left, the spectrum at the right (SPEC_W, from the row's right edge).
+    for key, x, w, code, sample in (("heard", CONTENT_X, HEARD_W, WAVE, "Bowl"),
+                                    ("seen", CONTENT_X + HEARD_W + 5, SEEN_W, EYE, "Bowl")):
         add("container", None, None, x=x, y=y2, w=w, h=30, radius=15, bg_color=TILE)
         add("container", f"{key}_dot", None, x=x + 10, y=y2 + 11, w=8, h=8, radius=4, bg_color=OFF,
             bind=f"{key}_dot", bind_target="color")
@@ -391,8 +401,8 @@ def settings():
     text("lbl_src", "grp_page_cam", lx + 4, y, 90, 20, 14, BOLD, MUTED, sample="Source")
     text("src_icon", "grp_page_cam", lx + 64, y - 1, 22, 22, 20, ICONS, MUTED, align="center", sample=chr(CAMERA),
          charset=ICON_CHARSET)
-    text("cam_src", "grp_page_cam", lx + 138, y, pw - 142, 20, 14, BOLD, WHITE, align="right",
-         sample="Mac camera · 368 × 276", overflow="ellipsis")
+    text("cam_src", "grp_page_cam", lx + 92, y, pw - 96, 20, 14, BOLD, WHITE, align="right",
+         sample="Video · SC101IOT v1.4 emulated", overflow="ellipsis")
 
 
 def scene():

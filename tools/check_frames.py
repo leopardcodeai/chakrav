@@ -3,7 +3,7 @@
 when the camera light's Auto would switch on.
 
 What: runs the frames of a video (or the drawn demo scene) at the app's frame rate and size
-      (368 x 276, as tools/camera_live.py sends them) through
+      (the 270 x 270 square of the emulated module, as tools/camera_live.py sends it; --module) through
         luma      the mean luma 0..255 (what the app's Auto reads)
         contrast  the luma's standard deviation: low means flat, hard to detect anything in
         change    the mean luma difference to the frame before: a moving or changing background
@@ -19,7 +19,7 @@ Pitfalls:
   * A video cannot answer the light: the light brightens nothing in a recording, so after Auto
     switched on, its "room got brighter" test only fires if the video itself gets brighter.
   * The stub's boxes mark nothing real over a video; the count only shows the pipeline runs.
-Usage:  check_frames.py --video FILE [--fps 2] [--seconds 60]
+Usage:  check_frames.py --video FILE [--fps 2] [--seconds 60] [--module v1.4|v1.2]
         check_frames.py --demo [--seconds 20]
         check_frames.py --video FILE --dry-run
 """
@@ -71,8 +71,8 @@ class AutoLight:
         return self.lit
 
 
-def video_frames(path: str, fps: int, seconds: float):
-    vf = f"fps={fps},scale={cam.W}:{cam.H}:force_original_aspect_ratio=increase,crop={cam.W}:{cam.H}"
+def video_frames(path: str, fps: int, seconds: float, module: str = "v1.4"):
+    vf, _ = cam.view_filter(module, fps)
     proc = subprocess.Popen(["ffmpeg", "-loglevel", "error", "-i", path, "-t", str(seconds), "-an", "-vf", vf,
                              "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-"], stdout=subprocess.PIPE)
     yield from cam.jpeg_frames(proc)
@@ -94,19 +94,20 @@ def main():
     src.add_argument("--demo", action="store_true")
     ap.add_argument("--fps", type=int, default=2, choices=[1, 2, 4])
     ap.add_argument("--seconds", type=float, default=120)
+    ap.add_argument("--module", choices=sorted(cam.MODULES), default="v1.4", help="the camera module to emulate")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.video and not os.path.exists(a.video):
         sys.exit(f"no such video: {a.video}")
     if a.dry_run:
         print(f"would read {a.video or 'the demo scene'} at {a.fps} fps for up to {a.seconds:.0f} s, "
-              f"{cam.W} x {cam.H}, and print luma, contrast, change, stub boxes and the light's Auto per second")
+              f"{cam.W} x {cam.H} ({a.module}: {cam.view_filter(a.module, a.fps)[1]}), and print luma, contrast, change, stub boxes and the light's Auto per second")
         return
     from PIL import ImageChops, ImageStat
     if a.demo:
         frames = (cam.demo_frame(i / a.fps) for i in range(int(a.seconds * a.fps)))
     else:
-        frames = video_frames(a.video, a.fps, a.seconds)
+        frames = video_frames(a.video, a.fps, a.seconds, a.module)
     stub, light, prev = cam.StubBoxes(), AutoLight(), None
     rows, sec = [], []
     print(f"{'s':>4} {'luma':>5} {'contr':>5} {'change':>6} {'boxes':>5}  light")

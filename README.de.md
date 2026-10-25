@@ -44,19 +44,42 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 |---|---|
 | Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (676670f) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
-| Live-Kamerabild, Mac-Kamera, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`) |
+| Live-Kamerabild: ein Quadrat wie in der Vorschau des Kamera-Kits, 270 x 270, von der Mac-Kamera oder einem Video, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`, emuliert das Modul V1.4 oder V1.2) |
 | Instrument-Boxen mit kurzer Beschriftung ("Schale", "Schale C"), bis zu 7, eine je Chakra-Schale | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
 | Pille "gehört" (oranger Punkt, solange sie hört), Pille "gesehen" (grüner Punkt, solange sie sieht) | laufen |
 | Spektrum: ein Band je Halbton, die Oktave des erkannten Tons und drei Halbtöne zu jeder Seite (A2 bis D4 für Oktave 3), sein Band in der Farbe seines Chakras; darunter die sieben Chakra-Punkte an ihren Tönen | läuft |
 | Anzeigepunkt neben dem Zahnrad, wie bei iOS: grün, solange eine Kamera oder ein Video das Bild liefert, orange, solange nur das Mikrofon hört, grau für die Demo-Szene; kein Verbindungspunkt | läuft |
-| Kameralicht: Aus, An, Auto (Standard; an, solange das Bild dunkel ist) | läuft im Simulator (die Mac-Kamera hat kein Licht, es wird gemeldet); auf dem Board ein markiertes TODO für die Blitz-LED des Moduls |
+| Kameralicht: Aus, An, Auto (Standard; an, solange das Bild dunkel ist) | läuft im Simulator (die Mac-Kamera hat kein Licht, es wird gemeldet); auf dem Board die Blitz-LEDs des Moduls (GPIO34), geschrieben, noch nicht gelaufen |
 | Einstellungen: Einstellungen, Anbindungen, **Kamera** (an, Boxen, fps, Cloud-KI) | laufen; auf dem Board als Einstellungsversion 5 gespeichert |
 | Cloud-KI (experimentell) | ein **Platzhalter**: die Einstellung und `tools/cloud_vision.py` gibt es, in v0 wird nichts gesendet |
-| Kamera auf dem Board | **noch nicht**: der Mosaico-Kameratreiber ist nicht eingebunden (`main/main.c`, TODO camera) |
+| Kamera auf dem Board | **geschrieben, baut, noch nicht gelaufen** (das Board ist bestellt): `main/camera.c` öffnet das Modul, unterscheidet V1.4 von V1.2, macht das quadratische Bild und seine Helligkeit, schaltet den Blitz |
 
 **Eine echte Erkennung gibt es noch nicht.** Die Boxen auf den Bildschirmfotos sind die Positionen der
 Demo-Szene; über der echten Kamera schickt `--demo-boxes` Boxen, die glaubhaft wandern und nichts markieren.
 Ohne den Schalter kommen keine Boxen, und die Pille "gesehen" sagt "Nichts".
+
+## Hardware: das Kameramodul
+
+Erwartet wird der ESP-Mosaico mit dem **Kameramodul V1.4 (SC101IOT)**; das ältere **V1.2 (OV3640)**
+läuft auch. Beide stecken nur im **linken Steckplatz**. Welches es ist, erkennt die App am Format, mit dem
+ihr Sensor öffnet (das BSP liest vorher die Kennung des Sensors), und nennt es auf der Seite Kamera
+("SC101IOT v1.4 · 1280 × 720").
+
+| Kameramodule | V1.4 (erwartet) | V1.2 |
+|---|---|---|
+| Sensor | SC101IOT, 1 MP, 2,9 µm Pixel (besser im dämmrigen Raum) | OV3640, 3 MP, 1,75 µm Pixel |
+| Bild | 1280 x 720 UYVY, 15 fps | 1024 x 768 UYVY, 25 fps |
+| Objektiv | 3,1 mm F1,8, **manueller Fokus**, 73 x 42 Grad | 68 Grad diagonal |
+| Aufrechtes Bild (das Modul sitzt quer) | 720 x 1280, hochkant 9:16 | 768 x 1024, hochkant 3:4 |
+| Quadrat der App | die ganzen 720 px Breite, etwa 42 x 42 Grad | die mittleren 720 von 768, etwa 42 x 42 Grad |
+| Blitz | zwei LEDs an GPIO34, LOW = an, Open Drain (aus, wenn der Host schläft) | ebenso |
+
+- **Das Bild ist quadratisch**, die Mitte des aufrechten Bildes, wie es die Vorschau des Kamera-Kits zeigt:
+  270 x 270 auf dem Bildschirm (720 x 6/16; die PPA des Boards skaliert in Schritten von 1/16).
+- **Einmal scharf stellen.** Das Objektiv der V1.4 hat manuellen Fokus: bei offenem Live-Bild einmal auf
+  den Abstand der Schalen drehen, dann so lassen.
+- **Licht.** Die Blitz-LEDs sind das Kameralicht (Aus, An, Auto). Wie lange sie an bleiben dürfen (Wärme)
+  und die Dunkel-Schwelle der Automatik mit dem helleren Sensor der V1.4 werden noch am Board gemessen.
 
 ## KI: zuerst auf dem Gerät, die Cloud zum Vergleich
 
@@ -82,12 +105,20 @@ Mosaico-Workspace neben diesem Ordner (`../../workspace`).
 ./sim.sh            # die App allein; selbst füttern:
 python3 tools/chakra_feed.py tone 174.6           # ein Ton (Herz)
 python3 tools/camera_live.py --demo --demo-boxes  # die Demo-Szene
+python3 tools/camera_live.py --video FILE --detect  # ein Video, wie es das Modul V1.4 sähe (--module v1.2)
 python3 tools/screens.py /tmp/chakrav-shots       # die vier Bildschirmfotos oben (nur Demo-Quellen)
 ```
 
 Ports: Audio auf 8710 (`CHAKRA_FEED_PORT`), Zeilen auf 8711 (`CHAKRA_AI_PORT`: Urteile des KI-Klangfilters,
 Bilder und Boxen der Kamera); ChakraV und Chakra teilen sich so nie einen Port. Die Vorschau nimmt 3222 oder
 den nächsten freien Port; `sim.sh` gibt ihn aus.
+
+**Das Modul, emuliert.** `camera_live.py --module v1.4` (Standard) oder `v1.2` macht aus einem Video das
+aufrechte Bild des Moduls (so skaliert, dass es es füllt, mittig; Hochkant-Videos in 9:16 passen genau
+zur V1.4), nimmt davon das mittlere Quadrat für die App und dasselbe Quadrat in doppelter Größe
+(540 x 540) für den Detektor, der Schalen dort viel besser erkennt. Von der Mac-Kamera nimmt es das
+mittlere Quadrat ihres Bildes im Bildwinkel des Moduls. Die Quellzeile auf der Seite Kamera sagt, was
+emuliert wird ("Video · SC101IOT v1.4 emulated").
 
 **Kamera und Privatsphäre.** macOS fragt einmal nach der Kamera-Erlaubnis für die App, die
 `camera_live.py` startet; wird sie verweigert, sagt das Skript das und wartet, es umgeht nichts. Bilder gibt
@@ -138,8 +169,10 @@ Gestaltungsvorbilder (25.10.2026):
      Instrument bleiben und nicht mit dem Hintergrund springen.
    - **Hilft das Licht?** Die Automatik des Kameralichts schaltete im dunklen Video nach 2 s ein und blieb an.
      Auf dem Board den Detektor mit und ohne Blitz-LED messen, und ihre Wärme im Dauerbetrieb.
-2. **Auf dem Board**: die Mosaico-Kamera einbinden (esp_video, siehe `apps/camera`), dann ein trainiertes
-   ESPDet-Pico auf dem ESP32-S31 für die Instrumente; ein Canvas-Ziel statt JPEG-Bildern.
+2. **Auf dem Board**: `main/camera.c` mit dem echten Modul laufen lassen und prüfen, was dort als CHECK ON
+   THE BOARD steht (Ausrichtung, Farben, der Encoder bei 270 px, die Wärme des Blitzes, die Dunkel-Schwelle
+   der Automatik); dann ein trainiertes ESPDet-Pico auf dem ESP32-S31 für die Instrumente; ein Canvas-Ziel
+   statt JPEG-Bildern.
 3. Die KI auf dem Gerät am Board messen: Klangfilter und Detektor, Laufzeit und Speicher.
 4. Der echte Cloud-Aufruf hinter Cloud-KI, um seine Boxen mit denen auf dem Gerät zu vergleichen.
 5. Gehörtes und Gesehenes verbinden: ein Anschlag auf der markierten Schale lässt ihre Box aufleuchten.

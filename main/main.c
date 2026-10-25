@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // ChakraV on the ESP-Mosaico, board side: display, microphone, Wi-Fi, lamps, settings, haptics.
-// ChakraV is the chakra app with a camera view; the camera itself is not wired in on the board yet
-// (TODO below, "camera"): the view says "Waiting for camera" and the Camera page "No camera yet".
+// ChakraV is the chakra app with a camera view: the camera module (V1.4 SC101IOT expected, V1.2
+// OV3640 still supported) runs in camera.c, written before the board arrived and not yet run on one.
 //
 // What: starts the GSP UI with chakra_core (components/app_chakra), listens to the ES8311
 // microphone (48 kHz stereo, mixed down to 16 kHz mono) and runs chakra_detect.c in its own task,
@@ -29,6 +29,7 @@
 #include <time.h>
 
 #include "app_display.h"
+#include "camera.h"
 #include "bsp/audio.h"
 #include "bsp/motor.h"
 #include "chakra_core.h"
@@ -318,6 +319,20 @@ static int poll_reading(chakra_reading_t *out, void *ctx)
         app.screen.hz = out->freq_hz;
         portEXIT_CRITICAL(&app.screen_lock);
     }
+    /* The camera task's newest frame and its source line (camera.c); set_frame copies the JPEG. */
+    const uint8_t *jpeg;
+    size_t jpeg_len;
+    int luma, kind;
+    char source[48];
+    if (camera_board_source(source, sizeof(source), &kind)) {
+        chakra_core_set_camera_source(app.core, kind, source);
+    }
+    if (camera_board_take(&jpeg, &jpeg_len, &luma)) {
+        if (chakra_core_set_frame(app.core, jpeg, jpeg_len)) {
+            chakra_core_set_frame_luma(app.core, luma);
+        }
+        camera_board_release();
+    }
     return got;
 }
 
@@ -334,32 +349,29 @@ static void on_light(int chakra, uint32_t rgb, int brightness, void *ctx)
 static void on_settings(const chakra_settings_t *s, void *ctx)
 {
     (void)ctx;
-    /* TODO(camera): once the Mosaico camera driver is wired in (esp_video, as apps/camera plans it:
-     * the BSP's camera_lcd_preview example), start or stop it with s->cam_on, take a frame every
-     * 1000 / s->cam_fps ms, encode it as a CHAKRA_CAM_W x CHAKRA_CAM_H JPEG (the S31's hardware
-     * JPEG encoder) and hand it to chakra_core_set_frame() on the UI task; the boxes then come from
-     * a detector on the S31 (ESPDet-Pico, README "Next") through chakra_core_set_box(). Better
-     * still on the board: a Canvas target instead of re-encoding (GSP docs, "Canvas producers").
-     * s->cam_cloud (experimental, off by default) stays unused on the board in v0: a cloud call
-     * would take its key from encrypted NVS only (tools/provision.py, later), never from a file. */
+    /* The camera (camera.c) starts or stops with s->cam_on and takes a frame every 1000 / s->cam_fps ms.
+     * TODO(detector): the boxes come from a detector on the S31 (ESPDet-Pico, README "Next") through
+     * chakra_core_set_box(); a Canvas target instead of re-encoding JPEG would save the encoder (GSP
+     * docs, "Canvas producers"). s->cam_cloud (experimental, off by default) stays unused on the board
+     * in v0: a cloud call would take its key from encrypted NVS only (tools/provision.py), never a file. */
+    camera_board_set(s->cam_on, s->cam_fps);
     app.settings = *s;
     chakra_settings_detect(s, &app.cfg);
     app.cfg_dirty = true;
     app.save_due = true;
 }
 
-/* The camera's light. Found in the BSP (25.10.2026): the camera module has a flash LED on GPIO 34,
- * active low through a high-side P-MOS, switched with mosaico_camera_flash_trigger() and
- * mosaico_camera_flash_stop() on an open mosaico_camera_handle_t
- * (workspace/submodule/esp-mosaico-bsp/components/mosaico_module_camera); camera_photo_app uses it
- * for flash photos only, so how long it may stay on (heat) is not documented.
- * TODO(camera): with the camera wired in, call those two here, and feed chakra_core_set_frame_luma()
- * with the mean Y of each frame (the UYVY/YUV preview has it for free). Measure the LED's heat on
- * the board before leaving it on for a whole session; cap its on-time if needed. */
+/* The camera's light: the module's two flash LEDs on GPIO34 (LOW = on, open drain, set up by the
+ * BSP), switched by the camera task (camera.c). camera_photo_app uses them for flash photos only,
+ * so how long they may stay on (heat) is not documented.
+ * TODO(board): measure the LEDs' heat before leaving them on for a whole session; cap the on-time
+ * if needed. Check Auto's LUMA_DARK (chakra_core.c) with the V1.4's 2.9 um pixels, which see more
+ * in a dim room than the OV3640's 1.75 um: the threshold may want to go lower. */
 static void on_cam_light(bool on, bool dark, void *ctx)
 {
     (void)ctx;
-    ESP_LOGI(TAG, "camera light %s%s (not wired yet)", on ? "on" : "off", dark ? ", dark picture" : "");
+    ESP_LOGI(TAG, "camera light %s%s", on ? "on" : "off", dark ? ", dark picture" : "");
+    camera_board_light(on);
 }
 
 static void on_haptic(int pattern, void *ctx)
@@ -787,7 +799,8 @@ void app_main(void)
                                            .settings = app.settings};
     ESP_ERROR_CHECK(chakra_core_create(app.ui, &core_cfg, &app.core));
     chakra_core_set_lamps(app.core, app.rows, app.row_count);
-    chakra_core_set_camera_source(app.core, CHAKRA_SOURCE_NONE, "No camera yet");  // TODO(camera): the module's name and size
+    ESP_ERROR_CHECK_WITHOUT_ABORT(camera_board_start());  // names the module on the Camera page once it opens
+    camera_board_set(app.settings.cam_on, app.settings.cam_fps);
     xTaskCreate(mic_task, "chakra_mic", 8192, NULL, 6, NULL);
     xTaskCreate(light_task, "chakra_light", 6144, NULL, 4, NULL);
     wifi_and_lamps_start();

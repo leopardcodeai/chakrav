@@ -68,3 +68,21 @@ CONFIG_APP_PROJECT_VER_FROM_CONFIG=y
 CONFIG_APP_PROJECT_VER="1.0.0"
 
 CONFIG_TINYUSB_CDC_COUNT=2
+
+# The camera module in the left slot (main/camera.c), both versions. Names checked on 25.10.2026 in
+# the BSP's components/mosaico_module_camera/Kconfig (it selects both sensors) and esp_cam_sensor's
+# Kconfig.ov3640 / Kconfig.sc101iot. Each sensor opens with its default format (camera.c asks for
+# width and height 0), and that size tells the modules apart.
+# GPIO33 is camera D2 and shares the USB Serial/JTAG D- pad (the console is on the UART).
+CONFIG_MOSAICO_MODULE_CAMERA=y
+CONFIG_ESP_VIDEO_ENABLE_DVP_VIDEO_DEVICE=y
+# V1.2: OV3640, 1024 x 768 UYVY at 25 fps (the sensor's own default is RGB565 640 x 480).
+CONFIG_CAMERA_OV3640=y
+CONFIG_CAMERA_OV3640_AUTO_DETECT_DVP_INTERFACE_SENSOR=y
+CONFIG_CAMERA_OV3640_DVP_YUV422_UYVY_1024X768_25FPS=y
+CONFIG_CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_25FPS=y
+# V1.4: SC101IOT, 1280 x 720 UYVY at 15 fps, the sensor's Kconfig default (the BSP also builds 25 fps).
+CONFIG_CAMERA_SC101IOT=y
+CONFIG_CAMERA_SC101IOT_AUTO_DETECT_DVP_INTERFACE_SENSOR=y
+CONFIG_CAMERA_SC101IOT_DVP_YUV422_1280X720_15FPS=y
+CONFIG_CAMERA_SC101IOT_DVP_DEFAULT_FMT_YUV422_1280X720_15FPS=y

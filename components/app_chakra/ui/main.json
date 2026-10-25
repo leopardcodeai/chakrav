@@ -54,10 +54,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 56,
-   "y": 84,
-   "w": 368,
-   "h": 276,
+   "x": 105,
+   "y": 88,
+   "w": 270,
+   "h": 270,
    "radius": 20,
    "bg_color": "#221F2A"
   },
@@ -65,10 +65,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_cam_wait",
-   "x": 56,
-   "y": 84,
-   "w": 368,
-   "h": 276,
+   "x": 105,
+   "y": 88,
+   "w": 270,
+   "h": 270,
    "hidden": false,
    "bind": "grp_cam_wait",
    "bind_target": "visible"
@@ -77,8 +77,8 @@
    "type": "label",
    "parent_name": "grp_cam_wait",
    "name": "cam_icon",
-   "x": 148,
-   "y": 86,
+   "x": 99,
+   "y": 83,
    "w": 72,
    "h": 72,
    "text": "󰄀",
@@ -94,8 +94,8 @@
    "parent_name": "grp_cam_wait",
    "name": "cam_wait_text",
    "x": 0,
-   "y": 172,
-   "w": 368,
+   "y": 169,
+   "w": 270,
    "h": 26,
    "text": "Waiting for camera",
    "font_size": 17,
@@ -110,10 +110,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_cam_img",
-   "x": 56,
-   "y": 84,
-   "w": 368,
-   "h": 276,
+   "x": 105,
+   "y": 88,
+   "w": 270,
+   "h": 270,
    "hidden": true,
    "bind": "grp_cam_img",
    "bind_target": "visible"
@@ -124,8 +124,8 @@
    "name": "cam_img",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "image": "art/cam_placeholder.png",
    "bind": "cam_img",
    "bind_target": "resource",
@@ -135,10 +135,10 @@
    "type": "container",
    "parent": -1,
    "name": "box_clip",
-   "x": 56,
-   "y": 84,
-   "w": 368,
-   "h": 276,
+   "x": 105,
+   "y": 88,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "clip_children": true
   },
@@ -152,17 +152,17 @@
    "x": {
     "default": 20,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 40,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -174,7 +174,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -190,7 +190,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -202,7 +202,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -210,7 +210,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -223,13 +223,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -241,8 +241,8 @@
    "name": "grp_play_0",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_0",
@@ -257,7 +257,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -273,7 +273,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -285,7 +285,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -293,7 +293,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -306,13 +306,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -393,19 +393,19 @@
    "bind": "grp_box_1",
    "bind_target": "visible",
    "x": {
-    "default": 64,
+    "default": 50,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 64,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -417,7 +417,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -433,7 +433,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -445,7 +445,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -453,7 +453,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -466,13 +466,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -484,8 +484,8 @@
    "name": "grp_play_1",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_1",
@@ -500,7 +500,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -516,7 +516,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -528,7 +528,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -536,7 +536,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -549,13 +549,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -636,19 +636,19 @@
    "bind": "grp_box_2",
    "bind_target": "visible",
    "x": {
-    "default": 108,
+    "default": 80,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 88,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -660,7 +660,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -676,7 +676,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -688,7 +688,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -696,7 +696,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -709,13 +709,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -727,8 +727,8 @@
    "name": "grp_play_2",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_2",
@@ -743,7 +743,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -759,7 +759,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -771,7 +771,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -779,7 +779,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -792,13 +792,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -879,19 +879,19 @@
    "bind": "grp_box_3",
    "bind_target": "visible",
    "x": {
-    "default": 152,
+    "default": 110,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 112,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -903,7 +903,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -919,7 +919,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -931,7 +931,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -939,7 +939,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -952,13 +952,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -970,8 +970,8 @@
    "name": "grp_play_3",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_3",
@@ -986,7 +986,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1002,7 +1002,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1014,7 +1014,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1022,7 +1022,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1035,13 +1035,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1122,19 +1122,19 @@
    "bind": "grp_box_4",
    "bind_target": "visible",
    "x": {
-    "default": 196,
+    "default": 140,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 136,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -1146,7 +1146,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1162,7 +1162,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1174,7 +1174,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1182,7 +1182,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1195,13 +1195,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1213,8 +1213,8 @@
    "name": "grp_play_4",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_4",
@@ -1229,7 +1229,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1245,7 +1245,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1257,7 +1257,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1265,7 +1265,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1278,13 +1278,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1365,19 +1365,19 @@
    "bind": "grp_box_5",
    "bind_target": "visible",
    "x": {
-    "default": 240,
+    "default": 170,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 160,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -1389,7 +1389,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1405,7 +1405,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1417,7 +1417,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1425,7 +1425,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1438,13 +1438,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1456,8 +1456,8 @@
    "name": "grp_play_5",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_5",
@@ -1472,7 +1472,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1488,7 +1488,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1500,7 +1500,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1508,7 +1508,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1521,13 +1521,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1608,19 +1608,19 @@
    "bind": "grp_box_6",
    "bind_target": "visible",
    "x": {
-    "default": 284,
+    "default": 200,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": {
     "default": 184,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0
   },
   {
@@ -1632,7 +1632,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1648,7 +1648,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1660,7 +1660,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1668,7 +1668,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1681,13 +1681,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 3,
@@ -1699,8 +1699,8 @@
    "name": "grp_play_6",
    "x": 0,
    "y": 0,
-   "w": 368,
-   "h": 276,
+   "w": 270,
+   "h": 270,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_6",
@@ -1715,7 +1715,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1731,7 +1731,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1743,7 +1743,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 368,
+    "max": 270,
     "property": "x"
    },
    "y": 0,
@@ -1751,7 +1751,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 276,
+    "max": 270,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1764,13 +1764,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 276,
+    "max": 270,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 368,
+    "max": 270,
     "property": "width"
    },
    "h": 6,
@@ -1846,10 +1846,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 46,
-   "y": 74,
-   "w": 388,
-   "h": 296,
+   "x": 95,
+   "y": 78,
+   "w": 290,
+   "h": 290,
    "radius": 30,
    "bg_color": "#00000000",
    "border_color": "#0E0C12",
@@ -1858,10 +1858,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 54,
-   "y": 82,
-   "w": 372,
-   "h": 280,
+   "x": 103,
+   "y": 86,
+   "w": 274,
+   "h": 274,
    "radius": 22,
    "bg_color": "#00000000",
    "border_color": "#FFFFFF24",
@@ -1872,7 +1872,7 @@
    "parent": -1,
    "name": "name_text",
    "x": 56,
-   "y": 370,
+   "y": 368,
    "w": 176,
    "h": 32,
    "text": "Ready",
@@ -1889,7 +1889,7 @@
    "parent": -1,
    "name": "sub_text",
    "x": 232,
-   "y": 377,
+   "y": 375,
    "w": 192,
    "h": 22,
    "text": "Strike a bowl or hum",
@@ -1905,7 +1905,7 @@
    "type": "container",
    "parent": -1,
    "x": 56,
-   "y": 410,
+   "y": 408,
    "w": 100,
    "h": 30,
    "radius": 15,
@@ -1916,7 +1916,7 @@
    "parent": -1,
    "name": "heard_dot",
    "x": 66,
-   "y": 421,
+   "y": 419,
    "w": 8,
    "h": 8,
    "radius": 4,
@@ -1928,7 +1928,7 @@
    "type": "label",
    "parent": -1,
    "x": 79,
-   "y": 417,
+   "y": 415,
    "w": 16,
    "h": 16,
    "text": "󱑽",
@@ -1943,7 +1943,7 @@
    "parent": -1,
    "name": "heard_text",
    "x": 99,
-   "y": 417,
+   "y": 415,
    "w": 50,
    "h": 18,
    "text": "Bowl",
@@ -1959,7 +1959,7 @@
    "type": "container",
    "parent": -1,
    "x": 161,
-   "y": 410,
+   "y": 408,
    "w": 116,
    "h": 30,
    "radius": 15,
@@ -1970,7 +1970,7 @@
    "parent": -1,
    "name": "seen_dot",
    "x": 171,
-   "y": 421,
+   "y": 419,
    "w": 8,
    "h": 8,
    "radius": 4,
@@ -1982,7 +1982,7 @@
    "type": "label",
    "parent": -1,
    "x": 184,
-   "y": 417,
+   "y": 415,
    "w": 16,
    "h": 16,
    "text": "󰛐",
@@ -1997,7 +1997,7 @@
    "parent": -1,
    "name": "seen_text",
    "x": 204,
-   "y": 417,
+   "y": 415,
    "w": 66,
    "h": 18,
    "text": "Bowl",
@@ -2014,7 +2014,7 @@
    "parent": -1,
    "name": "bar_0",
    "x": 282,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2030,7 +2030,7 @@
    "parent": -1,
    "name": "grp_hot_0",
    "x": 282,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2058,7 +2058,7 @@
    "parent": -1,
    "name": "bar_1",
    "x": 290,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2074,7 +2074,7 @@
    "parent": -1,
    "name": "grp_hot_1",
    "x": 290,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2102,7 +2102,7 @@
    "parent": -1,
    "name": "bar_2",
    "x": 298,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2118,7 +2118,7 @@
    "parent": -1,
    "name": "grp_hot_2",
    "x": 298,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2146,7 +2146,7 @@
    "parent": -1,
    "name": "bar_3",
    "x": 306,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2162,7 +2162,7 @@
    "parent": -1,
    "name": "grp_hot_3",
    "x": 306,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2190,7 +2190,7 @@
    "parent": -1,
    "name": "bar_4",
    "x": 314,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2206,7 +2206,7 @@
    "parent": -1,
    "name": "grp_hot_4",
    "x": 314,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2234,7 +2234,7 @@
    "parent": -1,
    "name": "bar_5",
    "x": 322,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2250,7 +2250,7 @@
    "parent": -1,
    "name": "grp_hot_5",
    "x": 322,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2278,7 +2278,7 @@
    "parent": -1,
    "name": "bar_6",
    "x": 330,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2294,7 +2294,7 @@
    "parent": -1,
    "name": "grp_hot_6",
    "x": 330,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2322,7 +2322,7 @@
    "parent": -1,
    "name": "bar_7",
    "x": 338,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2338,7 +2338,7 @@
    "parent": -1,
    "name": "grp_hot_7",
    "x": 338,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2366,7 +2366,7 @@
    "parent": -1,
    "name": "bar_8",
    "x": 346,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2382,7 +2382,7 @@
    "parent": -1,
    "name": "grp_hot_8",
    "x": 346,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2410,7 +2410,7 @@
    "parent": -1,
    "name": "bar_9",
    "x": 354,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2426,7 +2426,7 @@
    "parent": -1,
    "name": "grp_hot_9",
    "x": 354,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2454,7 +2454,7 @@
    "parent": -1,
    "name": "bar_10",
    "x": 362,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2470,7 +2470,7 @@
    "parent": -1,
    "name": "grp_hot_10",
    "x": 362,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2498,7 +2498,7 @@
    "parent": -1,
    "name": "bar_11",
    "x": 370,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2514,7 +2514,7 @@
    "parent": -1,
    "name": "grp_hot_11",
    "x": 370,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2542,7 +2542,7 @@
    "parent": -1,
    "name": "bar_12",
    "x": 378,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2558,7 +2558,7 @@
    "parent": -1,
    "name": "grp_hot_12",
    "x": 378,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2586,7 +2586,7 @@
    "parent": -1,
    "name": "bar_13",
    "x": 386,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2602,7 +2602,7 @@
    "parent": -1,
    "name": "grp_hot_13",
    "x": 386,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2630,7 +2630,7 @@
    "parent": -1,
    "name": "bar_14",
    "x": 394,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2646,7 +2646,7 @@
    "parent": -1,
    "name": "grp_hot_14",
    "x": 394,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2674,7 +2674,7 @@
    "parent": -1,
    "name": "bar_15",
    "x": 402,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2690,7 +2690,7 @@
    "parent": -1,
    "name": "grp_hot_15",
    "x": 402,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2718,7 +2718,7 @@
    "parent": -1,
    "name": "bar_16",
    "x": 410,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2734,7 +2734,7 @@
    "parent": -1,
    "name": "grp_hot_16",
    "x": 410,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2762,7 +2762,7 @@
    "parent": -1,
    "name": "bar_17",
    "x": 418,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "vertical": true,
@@ -2778,7 +2778,7 @@
    "parent": -1,
    "name": "grp_hot_17",
    "x": 418,
-   "y": 410,
+   "y": 408,
    "w": 6,
    "h": 22,
    "hidden": true,
@@ -2806,7 +2806,7 @@
    "parent": -1,
    "name": "dot_0",
    "x": 305,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2849,7 +2849,7 @@
    "parent": -1,
    "name": "dot_1",
    "x": 321,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2892,7 +2892,7 @@
    "parent": -1,
    "name": "dot_2",
    "x": 337,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2935,7 +2935,7 @@
    "parent": -1,
    "name": "dot_3",
    "x": 345,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2978,7 +2978,7 @@
    "parent": -1,
    "name": "dot_4",
    "x": 361,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -3021,7 +3021,7 @@
    "parent": -1,
    "name": "dot_5",
    "x": 377,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -3064,7 +3064,7 @@
    "parent": -1,
    "name": "dot_6",
    "x": 393,
-   "y": 432,
+   "y": 430,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -5451,11 +5451,11 @@
    "type": "label",
    "parent_name": "grp_page_cam",
    "name": "cam_src",
-   "x": 142,
+   "x": 96,
    "y": 318,
-   "w": 274,
+   "w": 320,
    "h": 20,
-   "text": "Mac camera · 368 × 276",
+   "text": "Video · SC101IOT v1.4 emulated",
    "font_size": 14,
    "font": "fonts/Inter-Bold.ttf",
    "fg_color": "#FFFFFF",
