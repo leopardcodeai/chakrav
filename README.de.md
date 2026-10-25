@@ -1,5 +1,7 @@
 # ChakraV
 
+<img src="docs/icon.svg" width="72" align="right" alt="ChakraV-Icon: eine Klangschale mit Kamera">
+
 **Chakra mit Video: die Klangschale hören, den Raum sehen, ihn in der Farbe des Chakras leuchten lassen.**
 
 ChakraV ist das experimentelle Geschwister von **[ChakraA](https://github.com/leopardcodeai/chakraa)**, der Audio-App,

@@ -1,5 +1,7 @@
 # ChakraV
 
+<img src="docs/icon.svg" width="72" align="right" alt="ChakraV icon: a singing bowl with a camera">
+
 **Chakra with video: hear the bowl, see the room, light it in the chakra's colour.**
 
 ChakraV is the experimental sibling of **[ChakraA](https://github.com/leopardcodeai/chakraa)**, the audio app,
