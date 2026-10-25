@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
-// Chakra app controller: readings in, screen and light commands out.
+// ChakraV app controller: readings, camera frames and instrument marks in, screen and light out.
 //
 // The platform (main/main.c on the board, host/platform_pc.c in the simulator) runs the
 // detection (chakra_detect.h) wherever its audio arrives and hands each reading over through
-// `poll`; the core fades the background to the chakra's colour, swaps the symbol, draws the
-// spectrum, runs the settings page and the hold-to-close top bar, and asks the platform to set
-// the lamps through `on_light`. All callbacks run on the UI task and must not block.
+// `poll`; the core fades the frame around the screen to the chakra's colour, shows the camera
+// frames and the boxes over them, draws the name, note, heard and seen pills and the spectrum,
+// runs the settings pages and the hold-to-close top bar, and asks the platform to set the lamps
+// through `on_light`. All callbacks run on the UI task and must not block.
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "chakra_detect.h"
@@ -19,6 +21,9 @@ extern "C" {
 #endif
 
 #define CHAKRA_LAMPS 4  // rows in the settings' lamp list (ui/make_scene.py LAMPS)
+#define CHAKRA_BOXES 4  // instrument marks over the camera view (ui/make_scene.py BOXES)
+#define CHAKRA_CAM_W 368  // the camera view in pixels; a frame must have exactly this size
+#define CHAKRA_CAM_H 276
 
 /* CHAKRA_LAMP_SCREEN: a full-screen colour page (a TV or laptop browser in fullscreen is the lamp);
  * its address stands large on the Connections page. New kinds go at the end: rows keep their kind. */
@@ -58,6 +63,11 @@ typedef struct {
     int color_mode;    // CHAKRA_COLOR_AUTO (default, 0), CHAKRA_COLOR_CHAKRA or CHAKRA_COLOR_HUE
     int color_value;   // the chakra 0..6, or the hue 0..359
     int ai;            // 1: the AI sound gate leads (bowls fade softly, strikes kick the light); 0 (default): off
+    /* ChakraV, 25.10.2026, again at the end (main.c SETTINGS_VERSION 5). */
+    int cam_on;        // 1 (default): the camera view is live; 0: no frames are taken or shown
+    int cam_boxes;     // 1 (default): instrument marks over the view
+    int cam_fps;       // frames a second: 1, 2 (default) or 4
+    int cam_cloud;     // 1: experimental Cloud AI (a vision model with the user's own key); 0 (default): off
 } chakra_settings_t;
 
 typedef struct chakra_core *chakra_core_handle_t;
@@ -102,13 +112,27 @@ esp_gsp_err_t chakra_core_destroy(chakra_core_handle_t *handle);
 void chakra_core_set_clock(chakra_core_handle_t c, const char *hhmm);
 void chakra_core_set_connection(chakra_core_handle_t c, int state);
 
-/* What the AI sound gate hears now (only used with settings.ai on). A bowl-like sound lets the
- * detection change the colour for the next AI_HOLD; anything else keeps the colour, and an onset
- * of it (strike = 1: a gong, a drum) kicks the light brighter for about a second instead. */
+/* What the AI sound gate hears now. The heard pill always shows it; with settings.ai on it also
+ * leads: a bowl-like sound lets the detection change the colour for the next AI_HOLD; anything
+ * else keeps the colour, and an onset of it (strike = 1: a gong, a drum) kicks the light brighter
+ * for about a second instead. */
 enum { CHAKRA_SOUND_NONE, CHAKRA_SOUND_BOWL, CHAKRA_SOUND_OTHER };
 void chakra_core_set_sound(chakra_core_handle_t c, int kind, int strike);
 /** The lamp list, at most CHAKRA_LAMPS; ticks on unpaired lamps are cleared. UI task only. */
 void chakra_core_set_lamps(chakra_core_handle_t c, const chakra_lamp_t *lamps, int count);
+
+/** A camera frame: a JPEG or PNG of exactly CHAKRA_CAM_W x CHAKRA_CAM_H. The screen copies it
+ *  (the caller keeps and frees its buffer); the one image slot is reused for every frame. Ignored
+ *  while the camera is off in the settings. Returns false for a frame of another size. UI task only. */
+bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t size);
+/** Instrument mark `index` (0..CHAKRA_BOXES-1): label ("Singing bowl"), box normalised to the view
+ *  (0..1 from the top left), confidence 0..1. Shown while the Boxes setting is on. UI task only. */
+void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, float x, float y, float w, float h,
+                         float confidence);
+/** Hides every mark (the detector sees nothing, or its frame is older than the picture). */
+void chakra_core_clear_boxes(chakra_core_handle_t c);
+/** The camera's source as one quiet line on the Camera page: "Mac camera · 368 × 276", "No camera yet". */
+void chakra_core_set_camera_source(chakra_core_handle_t c, const char *text);
 
 #ifdef __cplusplus
 }

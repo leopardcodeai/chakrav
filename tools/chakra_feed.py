@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Feeds audio into the chakra app's simulator and acts on its light commands.
+"""Feeds audio into the ChakraV app's simulator and acts on its light commands.
 
-What: streams signed 16-bit mono 16 kHz audio to the simulator (127.0.0.1:8698, see
+What: streams signed 16-bit mono 16 kHz audio to the simulator (127.0.0.1:8710, see
       components/app_chakra/host/platform_pc.c) in real time, from
         demo          a round through the seven chakras with singing-bowl-like tones
         tone HZ       one tone (harmonics optional) for --seconds
@@ -15,8 +15,9 @@ What: streams signed 16-bit mono 16 kHz audio to the simulator (127.0.0.1:8698, 
       (chakra names, note, Hz, cents) go there too, for the page's text.
       With --ai (mic and wav) the same audio also goes to tools/ai_gate.py (the AI sound gate,
       EfficientAT on the Mac, in the venv AI_VENV), whose verdicts ("sound bowl|other|none
-      strike") are forwarded to the simulator's second port (the audio port + 1); they act only
-      while the app's "AI sound gate" setting is On.
+      strike") are forwarded to the simulator's line port (--ai-port, CHAKRA_AI_PORT or 8711; it
+      also takes tools/camera_live.py); they lead only while the app's "AI sound gate" setting is
+      On, and the "heard" pill shows them either way.
 Why:  the board is on order; this tests the whole chain, microphone to lamp, on the Mac.
 Pitfalls:
   * Only one client at a time; a new feeder replaces the old one.
@@ -185,7 +186,9 @@ def main():
     ap.add_argument("--light", help="a Home Assistant light entity to colour, e.g. light.wohnzimmer")
     ap.add_argument("--lamp", metavar="URL", help="a screen lamp page instead of a real lamp, e.g. http://127.0.0.1:3310")
     ap.add_argument("--ai", action="store_true", help="also run the AI sound gate (mic and wav only)")
-    ap.add_argument("--port", type=int, default=int(os.environ.get("CHAKRA_FEED_PORT", "8698")))
+    ap.add_argument("--port", type=int, default=int(os.environ.get("CHAKRA_FEED_PORT", "8710")))
+    ap.add_argument("--ai-port", type=int, default=int(os.environ.get("CHAKRA_AI_PORT", "8711")),
+                    help="the simulator's line port for the AI verdicts (not relayed by the launcher)")
     ap.add_argument("--wait", action="store_true", help="retry for 2 min until the simulator listens")
     ap.add_argument("--dry-run", action="store_true", help="say what would be sent, connect to nothing")
     a = ap.parse_args()
@@ -223,7 +226,7 @@ def main():
             paced(sock, silence(2.0))
         else:
             src = ["-f", "avfoundation", "-i", ":0"] if a.mode == "mic" else ["-re", "-i", a.arg]
-            gate = start_gate(a.port + 1) if a.ai else None
+            gate = start_gate(a.ai_port) if a.ai else None
             proc = ffmpeg(src, AI_RATE if gate else RATE)
             print(("microphone open, Ctrl-C stops" if a.mode == "mic" else f"playing {a.arg}")
                   + (" (with the AI sound gate)" if gate else ""), flush=True)

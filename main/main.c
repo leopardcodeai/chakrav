@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Chakra on the ESP-Mosaico, board side: display, microphone, Wi-Fi, lamps, settings, haptics.
+// ChakraV on the ESP-Mosaico, board side: display, microphone, Wi-Fi, lamps, settings, haptics.
+// ChakraV is the chakra app with a camera view; the camera itself is not wired in on the board yet
+// (TODO below, "camera"): the view says "Waiting for camera" and the Camera page "No camera yet".
 //
 // What: starts the GSP UI with chakra_core (components/app_chakra), listens to the ES8311
 // microphone (48 kHz stereo, mixed down to 16 kHz mono) and runs chakra_detect.c in its own task,
@@ -53,10 +55,11 @@
 #include "nvs_flash.h"
 #include "ui_bundle.h"
 
-static const char *TAG = "chakra_mosaico";
+static const char *TAG = "chakrav_mosaico";
 
-#define NVS_NS "chakra"
-#define SETTINGS_VERSION 4  // 4: the AI sound gate ends the blob; 3: the screen lamp row and the colour
+#define NVS_NS "chakra"     // shared with the chakra app: the same lamps and networks (tools/provision.py)
+#define SETTINGS_KEY "chakrav"  // ChakraV's own settings blob, so the two apps never overwrite each other's
+#define SETTINGS_VERSION 5  // 5: camera on, boxes, fps, cloud end the blob; 4: the AI sound gate; 3: the screen lamp row and the colour
 #define SCREEN_LAMP_PATH "/lamp"
 #define MAX_HA 4
 #define MAX_HUE 16
@@ -193,9 +196,12 @@ static void load_settings(void)
          * row down, the screen lamp is ticked, the colour stays Auto. */
         const size_t v2 = 1 + offsetof(chakra_settings_t, color_mode);
         const size_t v3 = 1 + offsetof(chakra_settings_t, ai);  // version 3 ended before ai: it stays off
-        if (nvs_get_blob(h, "settings", blob, &len) == ESP_OK) {
+        const size_t v4 = 1 + offsetof(chakra_settings_t, cam_on);  // version 4 ended before the camera
+        if (nvs_get_blob(h, SETTINGS_KEY, blob, &len) == ESP_OK) {
             if (len == sizeof(blob) && blob[0] == SETTINGS_VERSION) {
                 memcpy(&app.settings, blob + 1, sizeof(chakra_settings_t));
+            } else if (len == v4 && blob[0] == 4) {
+                memcpy(&app.settings, blob + 1, v4 - 1);  // the camera fields keep their defaults (on, on, 2, cloud off)
             } else if (len == v3 && blob[0] == 3) {
                 memcpy(&app.settings, blob + 1, v3 - 1);
                 app.settings.ai = 0;
@@ -220,7 +226,7 @@ static void save_settings(void)
     uint8_t blob[sizeof(chakra_settings_t) + 1];
     blob[0] = SETTINGS_VERSION;
     memcpy(blob + 1, &app.settings, sizeof(chakra_settings_t));
-    if (nvs_set_blob(h, "settings", blob, sizeof(blob)) == ESP_OK) {
+    if (nvs_set_blob(h, SETTINGS_KEY, blob, sizeof(blob)) == ESP_OK) {
         nvs_commit(h);
     }
     nvs_close(h);
@@ -325,6 +331,14 @@ static void on_light(int chakra, uint32_t rgb, int brightness, void *ctx)
 static void on_settings(const chakra_settings_t *s, void *ctx)
 {
     (void)ctx;
+    /* TODO(camera): once the Mosaico camera driver is wired in (esp_video, as apps/camera plans it:
+     * the BSP's camera_lcd_preview example), start or stop it with s->cam_on, take a frame every
+     * 1000 / s->cam_fps ms, encode it as a CHAKRA_CAM_W x CHAKRA_CAM_H JPEG (the S31's hardware
+     * JPEG encoder) and hand it to chakra_core_set_frame() on the UI task; the boxes then come from
+     * a detector on the S31 (ESPDet-Pico, README "Next") through chakra_core_set_box(). Better
+     * still on the board: a Canvas target instead of re-encoding (GSP docs, "Canvas producers").
+     * s->cam_cloud (experimental, off by default) stays unused on the board in v0: a cloud call
+     * would take its key from encrypted NVS only (tools/provision.py, later), never from a file. */
     app.settings = *s;
     chakra_settings_detect(s, &app.cfg);
     app.cfg_dirty = true;
@@ -755,8 +769,9 @@ void app_main(void)
                                            .settings = app.settings};
     ESP_ERROR_CHECK(chakra_core_create(app.ui, &core_cfg, &app.core));
     chakra_core_set_lamps(app.core, app.rows, app.row_count);
+    chakra_core_set_camera_source(app.core, "No camera yet");  // TODO(camera): the module's name and size
     xTaskCreate(mic_task, "chakra_mic", 8192, NULL, 6, NULL);
     xTaskCreate(light_task, "chakra_light", 6144, NULL, 4, NULL);
     wifi_and_lamps_start();
-    ESP_LOGI(TAG, "Chakra ready");
+    ESP_LOGI(TAG, "ChakraV ready");
 }

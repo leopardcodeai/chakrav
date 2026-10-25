@@ -40,18 +40,35 @@ static const char *const KIND_ICON[] = {"\xf3\xb0\x9f\x90", "\xf3\xb0\x8c\xb5", 
 enum {
     S_READY, S_STRIKE, S_BRIGHT, S_SENS, S_HOLD, S_NOTES, S_NOT_PAIRED,
     S_KIND_HA, S_KIND_HUE, S_KIND_WIZ, S_KIND_BLE, S_KIND_SCREEN, S_HOLD_CLOSE, S_CLOSING, S_BOWLS, S_STRIKE_BOWL,
-    S_HOLD_TONE, S_FLOW, S_STRIKE_MODE, S_SETTINGS, S_CONNECTIONS, S_AUTO, S_COLOUR, S_AI, S_OFF, S_ON, S_COUNT
+    S_HOLD_TONE, S_FLOW, S_STRIKE_MODE, S_SETTINGS, S_CONNECTIONS, S_AUTO, S_COLOUR, S_AI, S_OFF, S_ON,
+    S_CAMERA, S_BOXES, S_FPS, S_SOURCE, S_WAITING, S_CAM_OFF, S_BOWL, S_OTHER, S_QUIET, S_TONE, S_NOTHING,
+    S_BOXES_OFF, S_CLOUD, S_COUNT
 };
 static const char *const TEXT[2][S_COUNT] = {
     {"Ready", "Strike a bowl or hum", "Brightness", "Sensitivity", "Afterglow", "Notes", "not paired",
-     "Home Assistant", "Hue", "Wi-Fi", "Bluetooth", "Screen lamp", "Hold: close Chakra", "Closing Chakra", "Bowls",
+     "Home Assistant", "Hue", "Wi-Fi", "Bluetooth", "Screen lamp", "Hold: close ChakraV", "Closing ChakraV", "Bowls",
      "Strike your %s bowl", "hold the tone", "Flow", "Strike", "Settings", "Connections", "Auto", "Colour",
-     "AI sound gate", "Off", "On"},
-    {"Bereit", "Klangschale anschlagen oder summen", "Helligkeit", "Empfindlichkeit", "Nachklang", "Noten",
-     "nicht gekoppelt", "Home Assistant", "Hue", "WLAN", "Bluetooth", "Bildschirm-Lampe", "Halten: Chakra schließen",
-     "Chakra wird geschlossen", "Schalen", "%s-Schale anschlagen", "Ton halten", "Fließen", "Anschlag",
-     "Einstellungen", "Anbindungen", "Auto", "Farbe", "KI-Klangfilter", "Aus", "An"},
+     "AI sound gate", "Off", "On", "Camera", "Boxes", "Frame rate", "Source", "Waiting for camera", "Camera off",
+     "Bowl", "Other", "Quiet", "Tone", "Nothing", "Boxes off", "Cloud AI"},
+    {"Bereit", "Schale anschlagen", "Helligkeit", "Empfindlichkeit", "Nachklang", "Noten",
+     "nicht gekoppelt", "Home Assistant", "Hue", "WLAN", "Bluetooth", "Bildschirm-Lampe", "Halten: ChakraV schließen",
+     "ChakraV wird geschlossen", "Schalen", "%s-Schale anschlagen", "Ton halten", "Fließen", "Anschlag",
+     "Einstellungen", "Anbindungen", "Auto", "Farbe", "KI-Klangfilter", "Aus", "An", "Kamera", "Boxen", "Bildrate",
+     "Quelle", "Warte auf Kamera", "Kamera aus", "Schale", "Anderes", "Still", "Ton", "Nichts", "Boxen aus",
+     "Cloud-KI"},
 };
+
+/* The detector's English labels in German; an unknown label is shown as it came. */
+static const char *const LABEL_DE[][2] = {
+    {"Singing bowl", "Klangschale"}, {"Tuning fork", "Stimmgabel"}, {"Drum", "Trommel"}, {"Chimes", "Klangspiel"},
+};
+
+#define SEEN_RGB 0x64D2FFu     // the seen pill's dot while a box is shown (box slot 0's colour)
+#define HEARD_RGB 0x34C759u    // the heard pill's dot while a tone or a bowl sounds
+#define HEARD_MS 1500          // an AI verdict older than this counts as nothing heard
+#define BOX_EDGE 3             // ui/make_scene.py EDGE
+#define BOX_MIN 16             // ui/make_scene.py BOX_MIN
+#define PILL_MAX 150           // ui/make_scene.py PILL_MAX
 
 /* The value a setter last sent; see put() below. */
 typedef struct {
@@ -93,6 +110,17 @@ struct chakra_core {
     float learn_sum, learn_mean, learn_prev;
     int learn_n;
     bool learn_gap;       // after a capture: wait for silence or another bowl
+    int heard_kind;       // the AI gate's last verdict (CHAKRA_SOUND_*), whatever the AI setting
+    uint32_t heard_ms;    // now() of that verdict
+    bool picture;         // a camera frame is on screen
+    struct {
+        bool on;
+        char label[40];
+        float conf;
+        int x, y, w, h;   // pixels inside the view
+    } box[CHAKRA_BOXES];
+    char cam_src[48];
+    bool boxes_dirty;     // set_box or clear_boxes since the last tick
     esp_gsp_err_t last_error;
     shadow_t shadow[SHADOW_SLOTS];
 };
@@ -218,6 +246,9 @@ void chakra_settings_defaults(chakra_settings_t *s)
     s->lang = CHAKRA_LANG_EN;
     s->a4 = 440;
     s->reaction = CHAKRA_FLOW;
+    s->cam_on = 1;
+    s->cam_boxes = 1;
+    s->cam_fps = 2;
 }
 
 void chakra_settings_detect(const chakra_settings_t *s, chakra_detect_config_t *out)
@@ -254,26 +285,13 @@ static uint32_t fixed_rgb(const struct chakra_core *c)
 
 // ------------------------------------------------------------------ drawing --
 
+/* The name below the camera view and the frame's target colour (the symbol, the dots and the
+ * tuning ring of the chakra app have no place on this screen: the frame and the view carry it). */
 static void draw_chakra(struct chakra_core *c, int chakra)
 {
-    static esp_gsp_err_t (*const sym[CHAKRA_COUNT])(esp_gsp_handle_t, bool) = {
-        gsp_chakra_grp_sym_0_set_visible, gsp_chakra_grp_sym_1_set_visible, gsp_chakra_grp_sym_2_set_visible,
-        gsp_chakra_grp_sym_3_set_visible, gsp_chakra_grp_sym_4_set_visible, gsp_chakra_grp_sym_5_set_visible,
-        gsp_chakra_grp_sym_6_set_visible};
-    static esp_gsp_err_t (*const ring[CHAKRA_COUNT])(esp_gsp_handle_t, bool) = {
-        gsp_chakra_grp_ring_0_set_visible, gsp_chakra_grp_ring_1_set_visible, gsp_chakra_grp_ring_2_set_visible,
-        gsp_chakra_grp_ring_3_set_visible, gsp_chakra_grp_ring_4_set_visible, gsp_chakra_grp_ring_5_set_visible,
-        gsp_chakra_grp_ring_6_set_visible};
-    for (int i = 0; i < CHAKRA_COUNT; ++i) {
-        put(c, sym[i], i == chakra);
-        put(c, ring[i], i == chakra);
-    }
-    put(c, gsp_chakra_grp_sym_idle_set_visible, chakra < 0);
-    put(c, gsp_chakra_grp_tune_set_visible, chakra >= 0);
     const chakra_info_t *info = chakra_info(chakra);
     const char *name = !info ? T(c, S_READY) : c->s.lang == CHAKRA_LANG_DE ? info->german : info->english;
     put(c, gsp_chakra_name_text_set_text, name);
-    put(c, gsp_chakra_sanskrit_text_set_text, info ? info->sanskrit : "");
     if (!info) {
         put(c, gsp_chakra_sub_text_set_text, T(c, S_STRIKE));
     }
@@ -281,7 +299,8 @@ static void draw_chakra(struct chakra_core *c, int chakra)
     c->target_rgb = fixed ? fixed : info ? info->rgb : IDLE_RGB;
 }
 
-/* The note line, as a tuner shows it: "F#3 · 171.4 Hz · +3 ct" while the tone sounds. */
+/* The note line, as a tuner shows it: "F#3 · 171.4 Hz" while the tone sounds (no cents: the line
+ * shares its row with the name). */
 static void draw_sub(struct chakra_core *c)
 {
     if (!chakra_info(c->shown)) {
@@ -290,30 +309,161 @@ static void draw_sub(struct chakra_core *c)
     const chakra_reading_t *r = &c->last;
     const int tenths = (int)(r->freq_hz * 10.0f + 0.5f);
     char line[96];
-    snprintf(line, sizeof(line), c->s.lang == CHAKRA_LANG_DE ? "%s%d · %d,%d Hz · %+d ct" : "%s%d · %d.%d Hz · %+d ct",
-             chakra_note_name(r->note), r->octave, tenths / 10, tenths % 10, r->cents);
+    snprintf(line, sizeof(line), c->s.lang == CHAKRA_LANG_DE ? "%s%d · %d,%d Hz" : "%s%d · %d.%d Hz",
+             chakra_note_name(r->note), r->octave, tenths / 10, tenths % 10);
     put(c, gsp_chakra_sub_text_set_text, line);
 }
 
+#define VIEW_BARS 8  // ui/make_scene.py BARS: the detection's 16 bands in pairs
+
 static void draw_bars(struct chakra_core *c)
 {
-    static esp_gsp_err_t (*const set[CHAKRA_BARS])(esp_gsp_handle_t, int32_t) = {
+    static esp_gsp_err_t (*const set[VIEW_BARS])(esp_gsp_handle_t, int32_t) = {
         gsp_chakra_bar_0_set_value, gsp_chakra_bar_1_set_value, gsp_chakra_bar_2_set_value,
         gsp_chakra_bar_3_set_value, gsp_chakra_bar_4_set_value, gsp_chakra_bar_5_set_value,
-        gsp_chakra_bar_6_set_value, gsp_chakra_bar_7_set_value, gsp_chakra_bar_8_set_value,
-        gsp_chakra_bar_9_set_value, gsp_chakra_bar_10_set_value, gsp_chakra_bar_11_set_value,
-        gsp_chakra_bar_12_set_value, gsp_chakra_bar_13_set_value, gsp_chakra_bar_14_set_value,
-        gsp_chakra_bar_15_set_value};
-    const uint8_t *bars = c->bars_want;
-    for (int k = 0; k < CHAKRA_BARS && spare(c); ++k) {
-        const int b = (c->bar_next + k) % CHAKRA_BARS;
+        gsp_chakra_bar_6_set_value, gsp_chakra_bar_7_set_value};
+    uint8_t bars[VIEW_BARS];
+    for (int b = 0; b < VIEW_BARS; ++b) {
+        const uint8_t x = c->bars_want[2 * b], y = c->bars_want[2 * b + 1];
+        bars[b] = x > y ? x : y;
+    }
+    for (int k = 0; k < VIEW_BARS && spare(c); ++k) {
+        const int b = (c->bar_next + k) % VIEW_BARS;
         const int d = (int)bars[b] - (int)c->bars[b];
         if (d >= 2 || d <= -2 || (bars[b] == 0 && c->bars[b] != 0)) {
             c->bars[b] = bars[b];
             put(c, set[b], bars[b]);
-            c->bar_next = (b + 1) % CHAKRA_BARS;
+            c->bar_next = (b + 1) % VIEW_BARS;
         }
     }
+}
+
+// ------------------------------------------------------------------ camera, boxes, pills --
+
+static const char *label_text(const struct chakra_core *c, const char *label)
+{
+    if (c->s.lang == CHAKRA_LANG_DE) {
+        for (size_t i = 0; i < sizeof(LABEL_DE) / sizeof(LABEL_DE[0]); ++i) {
+            if (strcmp(label, LABEL_DE[i][0]) == 0) {
+                return LABEL_DE[i][1];
+            }
+        }
+    }
+    return label;
+}
+
+/* The view: the last frame, or its tile with an icon and a word (waiting, or off). */
+static void draw_view(struct chakra_core *c)
+{
+    const bool live = c->s.cam_on && c->picture;
+    put(c, gsp_chakra_grp_cam_img_set_visible, live);
+    put(c, gsp_chakra_grp_cam_wait_set_visible, !live);
+    put(c, gsp_chakra_cam_icon_set_text, c->s.cam_on ? "\xf3\xb0\x84\x80" : "\xf3\xb0\x97\x9f");  // camera, camera-off
+    put(c, gsp_chakra_cam_wait_text_set_text, T(c, c->s.cam_on ? S_WAITING : S_CAM_OFF));
+}
+
+/* The seen pill: the most certain mark, or why there is none. */
+static void draw_seen(struct chakra_core *c)
+{
+    int best = -1;
+    for (int i = 0; i < CHAKRA_BOXES; ++i) {
+        if (c->box[i].on && (best < 0 || c->box[i].conf > c->box[best].conf)) {
+            best = i;
+        }
+    }
+    const char *text = !c->s.cam_on ? T(c, S_CAM_OFF) : !c->s.cam_boxes ? T(c, S_BOXES_OFF)
+                       : best < 0   ? T(c, S_NOTHING) : label_text(c, c->box[best].label);
+    put(c, gsp_chakra_seen_text_set_text, text);
+    put(c, gsp_chakra_seen_dot_set_color_rgb888, best >= 0 && c->s.cam_on && c->s.cam_boxes ? SEEN_RGB : OFF_RGB);
+}
+
+static void draw_boxes(struct chakra_core *c)
+{
+    static esp_gsp_err_t (*const vis[CHAKRA_BOXES])(esp_gsp_handle_t, bool) = {
+        gsp_chakra_grp_box_0_set_visible, gsp_chakra_grp_box_1_set_visible, gsp_chakra_grp_box_2_set_visible,
+        gsp_chakra_grp_box_3_set_visible};
+    const bool show = c->s.cam_on && c->s.cam_boxes && c->picture;
+    for (int i = 0; i < CHAKRA_BOXES; ++i) {
+        if (!show || !c->box[i].on) {
+            put(c, vis[i], false);  // a box is shown by draw_box_geometry, once it stands where it belongs
+        }
+    }
+    draw_seen(c);
+}
+
+/* A box's eight edge setters and its label. Every setter is a round trip in the simulator (about
+ * 20 ms), so this runs in the tick within the drawing budget: what is skipped now is drawn with a
+ * later tick's values, and unchanged values cost nothing (put). */
+static void draw_box_geometry(struct chakra_core *c)
+{
+#define BOX_SETTERS(i)                                                                                      \
+    {gsp_chakra_grp_box_##i##_set_x, gsp_chakra_grp_box_##i##_set_y, gsp_chakra_box_t_##i##_set_width,        \
+     gsp_chakra_box_l_##i##_set_height, gsp_chakra_box_r_##i##_set_x, gsp_chakra_box_r_##i##_set_height,      \
+     gsp_chakra_box_b_##i##_set_y, gsp_chakra_box_b_##i##_set_width}
+    static esp_gsp_err_t (*const set[CHAKRA_BOXES][8])(esp_gsp_handle_t, int32_t) = {
+        BOX_SETTERS(0), BOX_SETTERS(1), BOX_SETTERS(2), BOX_SETTERS(3)};
+#undef BOX_SETTERS
+    static esp_gsp_err_t (*const set_label[CHAKRA_BOXES])(esp_gsp_handle_t, const char *) = {
+        gsp_chakra_box_label_0_set_text, gsp_chakra_box_label_1_set_text, gsp_chakra_box_label_2_set_text,
+        gsp_chakra_box_label_3_set_text};
+    static esp_gsp_err_t (*const vis[CHAKRA_BOXES])(esp_gsp_handle_t, bool) = {
+        gsp_chakra_grp_box_0_set_visible, gsp_chakra_grp_box_1_set_visible, gsp_chakra_grp_box_2_set_visible,
+        gsp_chakra_grp_box_3_set_visible};
+    static esp_gsp_err_t (*const set_tag[CHAKRA_BOXES])(esp_gsp_handle_t, int32_t) = {
+        gsp_chakra_box_tag_0_set_x, gsp_chakra_box_tag_1_set_x, gsp_chakra_box_tag_2_set_x, gsp_chakra_box_tag_3_set_x};
+    static esp_gsp_err_t (*const set_pill[CHAKRA_BOXES])(esp_gsp_handle_t, int32_t) = {
+        gsp_chakra_box_pill_0_set_width, gsp_chakra_box_pill_1_set_width, gsp_chakra_box_pill_2_set_width,
+        gsp_chakra_box_pill_3_set_width};
+    if (!c->s.cam_on || !c->s.cam_boxes || !c->picture) {
+        return;
+    }
+    for (int i = 0; i < CHAKRA_BOXES; ++i) {
+        if (!c->box[i].on) {
+            continue;
+        }
+        const int x = c->box[i].x, y = c->box[i].y, w = c->box[i].w, h = c->box[i].h;
+        const int32_t v[8] = {x, y, w, h, w - BOX_EDGE, h, h - BOX_EDGE, w};
+        for (int k = 0; k < 8; ++k) {
+            if (!spare(c)) {
+                return;
+            }
+            put(c, set[i][k], v[k]);
+        }
+        if (!spare(c)) {
+            return;
+        }
+        char text[64];
+        const int pct = (int)(c->box[i].conf * 100.0f + 0.5f);
+        snprintf(text, sizeof(text), "%s %d %%", label_text(c, c->box[i].label), pct < 0 ? 0 : pct > 100 ? 100 : pct);
+        put(c, set_label[i], text);
+        if (!spare(c)) {
+            return;
+        }
+        int chars = 0;  // Inter Bold 12 px: about 6.6 px a character, plus the pill's padding
+        for (const char *p = text; *p; ++p) {
+            chars += ((uint8_t)*p & 0xC0) != 0x80;
+        }
+        int pill = 18 + chars * 66 / 10;
+        pill = pill < 40 ? 40 : pill > PILL_MAX ? PILL_MAX : pill;
+        put(c, set_pill[i], pill);
+        put(c, set_tag[i], x + pill > CHAKRA_CAM_W ? CHAKRA_CAM_W - (x + pill) : 0);
+        put(c, vis[i], true);
+    }
+}
+
+/* The heard pill: with the AI gate the last verdict (bowl, other, quiet), without it the detection
+ * (a tone or quiet). */
+static void draw_heard(struct chakra_core *c)
+{
+    int id = c->sounding ? S_TONE : S_QUIET;
+    const bool fresh = c->heard_ms && now(c) - c->heard_ms < HEARD_MS;
+    if (c->s.ai && fresh) {
+        id = c->heard_kind == CHAKRA_SOUND_BOWL ? S_BOWL : c->heard_kind == CHAKRA_SOUND_OTHER ? S_OTHER : S_QUIET;
+    }
+    put(c, gsp_chakra_heard_text_set_text, T(c, id));
+    put(c, gsp_chakra_heard_dot_set_color_rgb888, id == S_TONE || id == S_BOWL ? HEARD_RGB
+                                                   : id == S_OTHER                ? 0xFF9F0Au
+                                                                                  : OFF_RGB);
 }
 
 static void light(struct chakra_core *c);
@@ -339,17 +489,7 @@ static void animate(struct chakra_core *c)
     }
     if (rgb != c->drawn_rgb && spare(c)) {
         c->drawn_rgb = rgb;
-        put(c, gsp_chakra_bg_set_color_rgb888, rgb);
-    }
-    if (c->learn < 0) {
-        const int cents = c->last.cents < 0 ? -c->last.cents : c->last.cents;
-        const float goal = c->sounding ? 100.0f - 2.0f * (float)cents : 0.0f;
-        c->tune += (goal - c->tune) * TUNE_STEP;
-    }
-    const int v = (int)(c->tune + 0.5f);
-    if (v != c->tune_drawn && spare(c)) {
-        c->tune_drawn = v;
-        put(c, gsp_chakra_tune_arc_set_value, v);
+        put(c, gsp_chakra_bg_set_color_rgb888, rgb);  // the frame around the screen
     }
 }
 
@@ -373,6 +513,18 @@ static void draw_labels(struct chakra_core *c)
     put(c, gsp_chakra_lbl_ai_set_text, T(c, S_AI));
     put(c, gsp_chakra_lbl_ai_off_set_text, T(c, S_OFF));
     put(c, gsp_chakra_lbl_ai_on_set_text, T(c, S_ON));
+    put(c, gsp_chakra_lbl_tab_cam_set_text, T(c, S_CAMERA));
+    put(c, gsp_chakra_lbl_cam_set_text, T(c, S_CAMERA));
+    put(c, gsp_chakra_lbl_cam_off_set_text, T(c, S_OFF));
+    put(c, gsp_chakra_lbl_cam_on_set_text, T(c, S_ON));
+    put(c, gsp_chakra_lbl_boxes_set_text, T(c, S_BOXES));
+    put(c, gsp_chakra_lbl_boxes_off_set_text, T(c, S_OFF));
+    put(c, gsp_chakra_lbl_boxes_on_set_text, T(c, S_ON));
+    put(c, gsp_chakra_lbl_fps_set_text, T(c, S_FPS));
+    put(c, gsp_chakra_lbl_src_set_text, T(c, S_SOURCE));
+    put(c, gsp_chakra_lbl_cloud_set_text, T(c, S_CLOUD));
+    put(c, gsp_chakra_lbl_cloud_off_set_text, T(c, S_OFF));
+    put(c, gsp_chakra_lbl_cloud_on_set_text, T(c, S_ON));
 }
 
 static void draw_lamps(struct chakra_core *c)
@@ -427,8 +579,25 @@ static void draw_page(struct chakra_core *c)
 {
     put(c, gsp_chakra_tab_set_set_color_rgb888, c->page == 0 ? ON_RGB : OFF_RGB);
     put(c, gsp_chakra_tab_conn_set_color_rgb888, c->page == 1 ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_tab_cam_set_color_rgb888, c->page == 2 ? ON_RGB : OFF_RGB);
     put(c, gsp_chakra_grp_page_set_set_visible, c->page == 0);
     put(c, gsp_chakra_grp_page_conn_set_visible, c->page == 1);
+    put(c, gsp_chakra_grp_page_cam_set_visible, c->page == 2);
+}
+
+/* Page 3: camera, boxes, frame rate, source. */
+static void draw_camera_page(struct chakra_core *c)
+{
+    put(c, gsp_chakra_cam_off_set_color_rgb888, c->s.cam_on ? OFF_RGB : ON_RGB);
+    put(c, gsp_chakra_cam_on_set_color_rgb888, c->s.cam_on ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_boxes_off_set_color_rgb888, c->s.cam_boxes ? OFF_RGB : ON_RGB);
+    put(c, gsp_chakra_boxes_on_set_color_rgb888, c->s.cam_boxes ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_fps_1_set_color_rgb888, c->s.cam_fps == 1 ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_fps_2_set_color_rgb888, c->s.cam_fps == 2 ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_fps_4_set_color_rgb888, c->s.cam_fps == 4 ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_cloud_off_set_color_rgb888, c->s.cam_cloud ? OFF_RGB : ON_RGB);
+    put(c, gsp_chakra_cloud_on_set_color_rgb888, c->s.cam_cloud ? ON_RGB : OFF_RGB);
+    put(c, gsp_chakra_cam_src_set_text, c->cam_src);
 }
 
 static void draw_colour(struct chakra_core *c)
@@ -459,6 +628,7 @@ static void draw_settings(struct chakra_core *c)
     draw_page(c);
     draw_lamps(c);
     draw_colour(c);
+    draw_camera_page(c);
     char v[24];
     snprintf(v, sizeof(v), "%d %%", c->s.brightness);
     put(c, gsp_chakra_val_bright_set_text, v);
@@ -605,12 +775,12 @@ static void on_pointer(esp_gsp_handle_t ui, int32_t x, int32_t y, bool pressed, 
 
 // ------------------------------------------------------------------ learning the user's bowls --
 
+/* The name row holds only the chakra's name here; the step and the tone go on the right. */
 static void learn_draw(struct chakra_core *c, const chakra_reading_t *r)
 {
     const chakra_info_t *info = chakra_info(c->learn);
     char line[96];
-    snprintf(line, sizeof(line), T(c, S_STRIKE_BOWL), c->s.lang == CHAKRA_LANG_DE ? info->german : info->english);
-    put(c, gsp_chakra_name_text_set_text, line);
+    put(c, gsp_chakra_name_text_set_text, c->s.lang == CHAKRA_LANG_DE ? info->german : info->english);
     if (r && r->tone && c->learn_n > 0) {
         const int tenths = (int)(c->learn_mean * 10.0f + 0.5f);
         snprintf(line, sizeof(line), c->s.lang == CHAKRA_LANG_DE ? "%d/7 · %d,%d Hz" : "%d/7 · %d.%d Hz", c->learn + 1,
@@ -624,10 +794,6 @@ static void learn_draw(struct chakra_core *c, const chakra_reading_t *r)
 
 static void learn_step(struct chakra_core *c, int step)
 {
-    static esp_gsp_err_t (*const sym[CHAKRA_COUNT])(esp_gsp_handle_t, bool) = {
-        gsp_chakra_grp_sym_0_set_visible, gsp_chakra_grp_sym_1_set_visible, gsp_chakra_grp_sym_2_set_visible,
-        gsp_chakra_grp_sym_3_set_visible, gsp_chakra_grp_sym_4_set_visible, gsp_chakra_grp_sym_5_set_visible,
-        gsp_chakra_grp_sym_6_set_visible};
     c->learn = step;
     c->learn_ms = 0;
     c->learn_n = 0;
@@ -635,10 +801,7 @@ static void learn_step(struct chakra_core *c, int step)
     if (step < 0) {
         return;
     }
-    draw_chakra(c, step);  // the step's colour, symbol, dot and Sanskrit name
-    for (int i = 0; i < CHAKRA_COUNT; ++i) {
-        put(c, sym[i], i == step);
-    }
+    draw_chakra(c, step);  // the step's colour and name
     learn_draw(c, NULL);
 }
 
@@ -646,7 +809,6 @@ static void learn_start(struct chakra_core *c)
 {
     c->settings_open = false;
     put(c, gsp_chakra_grp_settings_set_visible, false);
-    put(c, gsp_chakra_grp_pulse_set_visible, false);
     c->learn_gap = false;
     c->shown = -1;
     learn_step(c, 0);
@@ -740,9 +902,32 @@ static void on_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void *ct
         }
         put(c, gsp_chakra_grp_settings_set_visible, c->settings_open);
         haptic(c, 1);
-    } else if (gsp_chakra_event_is_tab_set(event) || gsp_chakra_event_is_tab_conn(event)) {
-        c->page = gsp_chakra_event_is_tab_conn(event) ? 1 : 0;
+    } else if (gsp_chakra_event_is_tab_set(event) || gsp_chakra_event_is_tab_conn(event) ||
+               gsp_chakra_event_is_tab_cam(event)) {
+        c->page = gsp_chakra_event_is_tab_conn(event) ? 1 : gsp_chakra_event_is_tab_cam(event) ? 2 : 0;
         draw_page(c);
+        haptic(c, 1);
+    } else if (gsp_chakra_event_is_cam_off(event) || gsp_chakra_event_is_cam_on(event)) {
+        c->s.cam_on = gsp_chakra_event_is_cam_on(event) ? 1 : 0;
+        if (!c->s.cam_on) {
+            c->picture = false;  // the old frame goes with the camera; the next one comes fresh
+        }
+        settings_changed(c);
+        draw_view(c);
+        draw_boxes(c);
+        haptic(c, 1);
+    } else if (gsp_chakra_event_is_boxes_off(event) || gsp_chakra_event_is_boxes_on(event)) {
+        c->s.cam_boxes = gsp_chakra_event_is_boxes_on(event) ? 1 : 0;
+        settings_changed(c);
+        draw_boxes(c);
+        haptic(c, 1);
+    } else if (gsp_chakra_event_is_fps_1(event) || gsp_chakra_event_is_fps_2(event) || gsp_chakra_event_is_fps_4(event)) {
+        c->s.cam_fps = gsp_chakra_event_is_fps_1(event) ? 1 : gsp_chakra_event_is_fps_4(event) ? 4 : 2;
+        settings_changed(c);
+        haptic(c, 1);
+    } else if (gsp_chakra_event_is_cloud_off(event) || gsp_chakra_event_is_cloud_on(event)) {
+        c->s.cam_cloud = gsp_chakra_event_is_cloud_on(event) ? 1 : 0;  // the platform decides what it may do
+        settings_changed(c);
         haptic(c, 1);
     } else if (gsp_chakra_event_is_col_auto(event)) {
         c->s.color_mode = CHAKRA_COLOR_AUTO;
@@ -809,6 +994,9 @@ static void on_event(esp_gsp_handle_t ui, const esp_gsp_event_t *event, void *ct
         c->s.lang = gsp_chakra_event_is_lang_de(event) ? CHAKRA_LANG_DE : CHAKRA_LANG_EN;
         draw_labels(c);
         draw_chakra(c, c->shown);
+        draw_view(c);
+        draw_boxes(c);
+        draw_heard(c);
         settings_changed(c);
         haptic(c, 1);
     }
@@ -841,10 +1029,7 @@ static void tick(esp_gsp_handle_t ui, void *ctx)
             c->last = r;  // the note line keeps the last real tone through the after-glow
         }
         c->last.chakra = r.chakra;
-        if (sounding != c->sounding) {
-            c->sounding = sounding;
-            put(c, gsp_chakra_grp_pulse_set_visible, sounding);
-        }
+        c->sounding = sounding;
         /* With the AI gate, only a bowl-like sound may change the colour: a gong or a drum that
          * the detection reads as a tone keeps the colour and kicks the light instead. */
         const bool ai_blocks = c->s.ai && r.chakra >= 0 &&
@@ -869,6 +1054,14 @@ static void tick(esp_gsp_handle_t ui, void *ctx)
         c->sub_tick = c->ticks;
         draw_sub(c);
     }
+    if (c->ticks % 3 == 0) {
+        draw_heard(c);  // an AI verdict ages out after HEARD_MS
+    }
+    if (c->boxes_dirty) {
+        c->boxes_dirty = false;
+        draw_boxes(c);  // hides the boxes that did not come back, and the seen pill
+    }
+    draw_box_geometry(c);
     draw_bars(c);
 }
 
@@ -876,8 +1069,13 @@ static void tick(esp_gsp_handle_t ui, void *ctx)
 
 void chakra_core_set_sound(chakra_core_handle_t c, int kind, int strike)
 {
-    if (!c || !c->s.ai) {
+    if (!c) {
         return;
+    }
+    c->heard_kind = kind;
+    c->heard_ms = now(c) ? now(c) : 1;
+    if (!c->s.ai) {
+        return;  // the heard pill shows the detection then; the gate only leads with AI on
     }
     if (kind == CHAKRA_SOUND_BOWL) {
         c->bowl_tick = c->ticks;
@@ -885,6 +1083,109 @@ void chakra_core_set_sound(chakra_core_handle_t c, int kind, int strike)
     } else if (kind == CHAKRA_SOUND_OTHER && strike) {
         c->kick = 1.0f;
         light(c);
+    }
+}
+
+static uint32_t be16(const uint8_t *p)
+{
+    return ((uint32_t)p[0] << 8) | p[1];
+}
+
+/* A PNG's or JPEG's size from its header (as apps/house house_image_size). */
+static bool chakra_image_size(const uint8_t *d, size_t n, int *w, int *h)
+{
+    if (!d || n < 24) {
+        return false;
+    }
+    if (memcmp(d, "\x89PNG\r\n\x1a\n", 8) == 0 && memcmp(d + 12, "IHDR", 4) == 0) {
+        *w = (int)((be16(d + 16) << 16) | be16(d + 18));
+        *h = (int)((be16(d + 20) << 16) | be16(d + 22));
+        return *w > 0 && *h > 0;
+    }
+    if (d[0] != 0xFF || d[1] != 0xD8) {
+        return false;
+    }
+    /* JPEG: walk the segments to the first start-of-frame (SOF0..SOF15 without DHT, JPG, DAC). */
+    size_t i = 2;
+    while (i + 9 < n) {
+        if (d[i] != 0xFF) {
+            return false;
+        }
+        const uint8_t m = d[i + 1];
+        if (m == 0xFF) {
+            i++;
+            continue;
+        }
+        const uint32_t len = be16(d + i + 2);
+        if (m >= 0xC0 && m <= 0xCF && m != 0xC4 && m != 0xC8 && m != 0xCC) {
+            *h = (int)be16(d + i + 5);
+            *w = (int)be16(d + i + 7);
+            return *w > 0 && *h > 0;
+        }
+        if (m == 0xD9 || m == 0xDA || len < 2) {
+            return false;
+        }
+        i += 2 + len;
+    }
+    return false;
+}
+
+bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t size)
+{
+    if (!c || !c->s.cam_on) {
+        return false;
+    }
+    int w = 0, h = 0;
+    if (!chakra_image_size(data, size, &w, &h) || w != CHAKRA_CAM_W || h != CHAKRA_CAM_H) {
+        return false;  // images play at their native size only: a wrong size would not fill the view
+    }
+    const esp_gsp_err_t e = gsp_chakra_cam_img_set_image(c->ui, data, size);
+    err(c, e);
+    if (e == ESP_GSP_OK && !c->picture) {
+        c->picture = true;
+        draw_view(c);
+        draw_boxes(c);
+    }
+    return e == ESP_GSP_OK;
+}
+
+void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, float x, float y, float w, float h,
+                         float confidence)
+{
+    if (!c || index < 0 || index >= CHAKRA_BOXES || !label) {
+        return;
+    }
+    const float cx = x < 0 ? 0 : x > 1 ? 1 : x, cy = y < 0 ? 0 : y > 1 ? 1 : y;
+    const int px = (int)(cx * CHAKRA_CAM_W + 0.5f), py = (int)(cy * CHAKRA_CAM_H + 0.5f);
+    int pw = (int)(w * CHAKRA_CAM_W + 0.5f), ph = (int)(h * CHAKRA_CAM_H + 0.5f);
+    pw = pw < BOX_MIN ? BOX_MIN : pw > CHAKRA_CAM_W - px ? CHAKRA_CAM_W - px : pw;  // inside the view
+    ph = ph < BOX_MIN ? BOX_MIN : ph > CHAKRA_CAM_H - py ? CHAKRA_CAM_H - py : ph;
+    snprintf(c->box[index].label, sizeof(c->box[index].label), "%s", label);
+    c->box[index].conf = confidence;
+    c->box[index].on = true;
+    c->box[index].x = px;
+    c->box[index].y = py;
+    c->box[index].w = pw < BOX_MIN ? BOX_MIN : pw;
+    c->box[index].h = ph < BOX_MIN ? BOX_MIN : ph;
+    c->boxes_dirty = true;  // drawn in the tick: a frame's "clear" and its boxes arrive together
+}
+
+void chakra_core_clear_boxes(chakra_core_handle_t c)
+{
+    if (!c) {
+        return;
+    }
+    for (int i = 0; i < CHAKRA_BOXES; ++i) {
+        c->box[i].on = false;
+    }
+    c->boxes_dirty = true;  // the boxes that come back with this frame are not hidden first
+}
+
+void chakra_core_set_camera_source(chakra_core_handle_t c, const char *text)
+{
+    if (c) {
+        snprintf(c->cam_src, sizeof(c->cam_src), "%s", text ? text : "");
+        put(c, gsp_chakra_cam_src_set_text, c->cam_src);
     }
 }
 
@@ -950,9 +1251,18 @@ esp_gsp_err_t chakra_core_create(esp_gsp_handle_t ui, const chakra_core_config_t
     if (c->s.color_mode < CHAKRA_COLOR_AUTO || c->s.color_mode > CHAKRA_COLOR_HUE) {
         c->s.color_mode = CHAKRA_COLOR_AUTO;  // a blob from before the colour setting, or damaged
     }
+    if (c->s.cam_fps != 1 && c->s.cam_fps != 2 && c->s.cam_fps != 4) {
+        c->s.cam_fps = 2;
+    }
+    c->s.cam_on = c->s.cam_on ? 1 : 0;
+    c->s.cam_boxes = c->s.cam_boxes ? 1 : 0;
+    c->s.cam_cloud = c->s.cam_cloud ? 1 : 0;
     draw_labels(c);
     draw_chakra(c, -1);
     draw_settings(c);
+    draw_view(c);
+    draw_boxes(c);
+    draw_heard(c);
     esp_gsp_err_t e = esp_gsp_on_event(ui, on_event, c);
     if (e == ESP_GSP_OK) {
         e = esp_gsp_set_pointer_observer(ui, on_pointer, c);

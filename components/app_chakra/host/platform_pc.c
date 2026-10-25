@@ -1,17 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
-// Simulator side of the chakra app: audio arrives over loopback TCP from tools/chakra_feed.py
+// Simulator side of the ChakraV app: audio arrives over loopback TCP from tools/chakra_feed.py
 // (the Mac's microphone through ffmpeg, a test tone, a demo round or a WAV file), the same
 // chakra_detect.c as on the board runs on it, and every light command goes back as a line, so
 // the feeder can colour the screen lamp page (or, with --light, a real lamp in Home Assistant).
 //
-// Protocol: in, raw signed 16-bit little-endian mono samples at 16 kHz; out, one line per
-// change: light\t<chakra -1..6>\t<RRGGBB>\t<brightness %>\t<transition s>\n, close\n for the hold gesture,
-// and while a chakra is locked, at most twice a second when it changes, the reading for a lamp page:
+// Protocol, audio port (CHAKRA_FEED_PORT, default 8710): in, raw signed 16-bit little-endian mono
+// samples at 16 kHz; out, one line per change: light\t<chakra -1..6>\t<RRGGBB>\t<brightness %>\t<transition s>\n,
+// close\n for the hold gesture, and while a chakra is locked, at most twice a second when it
+// changes, the reading for a lamp page:
 // reading\t<chakra>\t<english>\t<german>\t<sanskrit>\t<note+octave>\t<Hz>\t<cents>\t<solfeggio Hz>\t<en|de>\n
-// The AI sound gate's verdicts come in on a second port, CHAKRA_AI_PORT or the audio port + 1,
-// one line each from tools/chakra_feed.py --ai: sound\t<bowl|other|none>\t<strike 0|1>\n.
-// Port: CHAKRA_FEED_PORT or 8698, 127.0.0.1 only, one client at a time. All socket work is
-// non-blocking and runs in the core's 40 ms tick on the bridge's single thread.
+// Line port (CHAKRA_AI_PORT, default 8711; up to LINE_CLIENTS at once: the AI sound gate through
+// chakra_feed.py --ai and the camera through tools/camera_live.py), in:
+//   sound\t<bowl|other|none>\t<strike 0|1>              the AI sound gate's verdict
+//   frame\t<path>                                        a JPEG of CHAKRA_CAM_W x CHAKRA_CAM_H, read at once
+//   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>            a mark, normalised 0..1; a frame's boxes follow it
+//   boxes\tclear                                          before each frame's boxes
+//   source\t<text>                                       the Camera page's source line
+// out, to every line client when it connects and on each change of the settings:
+//   camera\t<on 0|1>\t<boxes 0|1>\t<fps 1|2|4>\t<cloud 0|1>
+// 127.0.0.1 only. All socket work is non-blocking and runs in the core's 40 ms tick on the
+// bridge's single thread.
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -28,14 +36,22 @@
 #include "gsp_sim_bridge.h"
 
 #define CHUNK 4096
+#define LINE_CLIENTS 4
+#define LINE_MAX 512
+#define FRAME_MAX (512 * 1024)  // a 368 x 276 JPEG is about 20 to 40 KB
 
 static struct {
     chakra_core_handle_t core;
     chakra_detect_t *detect;
     int listener, client;
-    int ai_listener, ai_client;
-    char ai_line[64];
-    size_t ai_len;
+    int ai_listener;
+    struct {
+        int fd;
+        char line[LINE_MAX];
+        size_t len;
+    } lines[LINE_CLIENTS];
+    int box_next;      // the next box slot for this frame's boxes
+    chakra_settings_t settings;  // the last on_settings, for the camera line
     uint8_t carry;     // an odd byte left from the last read
     bool has_carry;
     int16_t pcm[CHUNK];
@@ -44,7 +60,7 @@ static struct {
     uint8_t lamps;     // ticked rows, from the last on_settings
     int reaction;
     int lang;          // CHAKRA_LANG_EN or CHAKRA_LANG_DE, for the reading line
-} host = {.listener = -1, .client = -1, .ai_listener = -1, .ai_client = -1};
+} host = {.listener = -1, .client = -1, .ai_listener = -1};
 
 static void nonblock(int fd)
 {
@@ -62,61 +78,132 @@ static int listen_loopback(int port, const char *what)
     struct sockaddr_in a = {.sin_family = AF_INET, .sin_port = htons((uint16_t)port)};
     a.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     if (bind(fd, (struct sockaddr *)&a, sizeof(a)) != 0 || listen(fd, 1) != 0) {
-        fprintf(stderr, "chakra: cannot listen on 127.0.0.1:%d (%s)\n", port, strerror(errno));
+        fprintf(stderr, "chakrav: cannot listen on 127.0.0.1:%d (%s)\n", port, strerror(errno));
         close(fd);
         return -1;
     }
     nonblock(fd);
-    fprintf(stderr, "chakra: %s on 127.0.0.1:%d\n", what, port);
+    fprintf(stderr, "chakrav: %s on 127.0.0.1:%d\n", what, port);
     return fd;
 }
 
 static int feed_port(void)
 {
     const char *env = getenv("CHAKRA_FEED_PORT");
-    return env ? atoi(env) : 8698;
+    return env ? atoi(env) : 8710;
 }
 
-/* The AI gate's lines: accept one client, read what is there, act on every complete line. */
-static void poll_ai(void)
+/* The camera line for one line client: what it should send. */
+static void send_camera(int fd)
+{
+    char line[64];
+    snprintf(line, sizeof(line), "camera\t%d\t%d\t%d\t%d\n", host.settings.cam_on, host.settings.cam_boxes,
+             host.settings.cam_fps, host.settings.cam_cloud);
+    if (fd >= 0) {
+        (void)!write(fd, line, strlen(line));
+    }
+}
+
+/* A frame from camera_live.py: the file is read now (it is overwritten with the next one). */
+static void take_frame(const char *path)
+{
+    static uint8_t *buf;
+    if (!buf && !(buf = malloc(FRAME_MAX))) {
+        return;
+    }
+    FILE *f = fopen(path, "rb");
+    if (!f) {
+        return;
+    }
+    const size_t n = fread(buf, 1, FRAME_MAX, f);
+    fclose(f);
+    const uint64_t t0 = gsp_sim_bridge_time_ms();
+    const bool ok = n > 0 && n < FRAME_MAX && chakra_core_set_frame(host.core, buf, n);
+    static unsigned long frames;
+    if (getenv("CHAKRA_LOG") && frames++ % 10 == 0) {
+        fprintf(stderr, "chakrav: frame %lu, %zu bytes, set_image %llu ms\n", frames, n,
+                (unsigned long long)(gsp_sim_bridge_time_ms() - t0));
+    }
+    if (n > 0 && n < FRAME_MAX && !ok) {
+        static unsigned long refused;
+        if (refused++ % 50 == 0) {
+            fprintf(stderr, "chakrav: frame refused (camera off, or not %dx%d)\n", CHAKRA_CAM_W, CHAKRA_CAM_H);
+        }
+    }
+}
+
+static void line_in(char *line)
+{
+    char *f[8];
+    int n = 0;
+    for (char *p = line; n < 8;) {
+        f[n++] = p;
+        char *tab = strchr(p, '\t');
+        if (!tab) {
+            break;
+        }
+        *tab = '\0';
+        p = tab + 1;
+    }
+    if (strcmp(f[0], "sound") == 0 && n >= 2) {
+        const int k = strcmp(f[1], "bowl") == 0    ? CHAKRA_SOUND_BOWL
+                      : strcmp(f[1], "other") == 0 ? CHAKRA_SOUND_OTHER
+                                                   : CHAKRA_SOUND_NONE;
+        chakra_core_set_sound(host.core, k, n >= 3 ? atoi(f[2]) : 0);
+    } else if (strcmp(f[0], "frame") == 0 && n >= 2) {
+        take_frame(f[1]);
+    } else if (strcmp(f[0], "boxes") == 0) {
+        host.box_next = 0;
+        chakra_core_clear_boxes(host.core);
+    } else if (strcmp(f[0], "box") == 0 && n >= 7 && host.box_next < CHAKRA_BOXES) {
+        chakra_core_set_box(host.core, host.box_next++, f[1], strtof(f[2], NULL), strtof(f[3], NULL),
+                            strtof(f[4], NULL), strtof(f[5], NULL), n >= 7 ? strtof(f[6], NULL) : 1.0f);
+    } else if (strcmp(f[0], "source") == 0 && n >= 2) {
+        chakra_core_set_camera_source(host.core, f[1]);
+    }
+}
+
+/* The line port: accept up to LINE_CLIENTS, read what is there, act on every complete line. */
+static void poll_lines(void)
 {
     if (host.ai_listener >= 0) {
-        int fd = accept(host.ai_listener, NULL, NULL);
-        if (fd >= 0) {
-            if (host.ai_client >= 0) {
-                close(host.ai_client);
+        int fd;
+        while ((fd = accept(host.ai_listener, NULL, NULL)) >= 0) {
+            int slot = -1;
+            for (int i = 0; i < LINE_CLIENTS && slot < 0; ++i) {
+                slot = host.lines[i].fd < 0 ? i : -1;
+            }
+            if (slot < 0) {
+                close(fd);  // full: the oldest stay
+                continue;
             }
             nonblock(fd);
-            host.ai_client = fd;
-            host.ai_len = 0;
+            host.lines[slot].fd = fd;
+            host.lines[slot].len = 0;
+            send_camera(fd);
         }
     }
-    if (host.ai_client < 0) {
-        return;
-    }
-    char buf[256];
-    ssize_t r = read(host.ai_client, buf, sizeof(buf));
-    if (r == 0 || (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
-        close(host.ai_client);
-        host.ai_client = -1;
-        return;
-    }
-    for (ssize_t i = 0; i < r; ++i) {
-        if (buf[i] != '\n') {
-            if (host.ai_len < sizeof(host.ai_line) - 1) {
-                host.ai_line[host.ai_len++] = buf[i];
-            }
+    for (int i = 0; i < LINE_CLIENTS; ++i) {
+        if (host.lines[i].fd < 0) {
             continue;
         }
-        host.ai_line[host.ai_len] = '\0';
-        host.ai_len = 0;
-        char kind[16];
-        int strike = 0;
-        if (sscanf(host.ai_line, "sound\t%15s\t%d", kind, &strike) >= 1) {
-            const int k = strcmp(kind, "bowl") == 0    ? CHAKRA_SOUND_BOWL
-                          : strcmp(kind, "other") == 0 ? CHAKRA_SOUND_OTHER
-                                                       : CHAKRA_SOUND_NONE;
-            chakra_core_set_sound(host.core, k, strike);
+        char buf[2048];
+        ssize_t r = read(host.lines[i].fd, buf, sizeof(buf));
+        if (r == 0 || (r < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+            close(host.lines[i].fd);
+            host.lines[i].fd = -1;
+            continue;
+        }
+        for (ssize_t k = 0; k < r; ++k) {
+            if (buf[k] != '\n') {
+                if (host.lines[i].len < LINE_MAX - 1) {
+                    host.lines[i].line[host.lines[i].len++] = buf[k];
+                }
+                continue;
+            }
+            host.lines[i].line[host.lines[i].len] = '\0';
+            host.lines[i].len = 0;
+            line_in(host.lines[i].line);
         }
     }
 }
@@ -138,7 +225,7 @@ static void on_light(int chakra, uint32_t rgb, int brightness, void *ctx)
     /* Lamps fade like the screen: Flow softly, Strike at once. */
     snprintf(line, sizeof(line), "light\t%d\t%06X\t%d\t%.1f\n", chakra, (unsigned)rgb, brightness,
              host.reaction == CHAKRA_STRIKE ? 0.1 : 1.5);
-    fprintf(stderr, "chakra: %s", line);
+    fprintf(stderr, "chakrav: %s", line);
     send_text(line);
 }
 
@@ -151,10 +238,18 @@ static void on_settings(const chakra_settings_t *s, void *ctx)
     host.lamps = s->lamps;
     host.reaction = s->reaction;
     host.lang = s->lang;
-    fprintf(stderr, "chakra: settings lamps=0x%02x bright=%d gate=%.0f dB hold=%u ms map=%d lang=%d\n", s->lamps,
+    const bool camera_changed = s->cam_on != host.settings.cam_on || s->cam_boxes != host.settings.cam_boxes ||
+                                s->cam_fps != host.settings.cam_fps || s->cam_cloud != host.settings.cam_cloud;
+    host.settings = *s;
+    if (camera_changed) {
+        for (int i = 0; i < LINE_CLIENTS; ++i) {
+            send_camera(host.lines[i].fd);
+        }
+    }
+    fprintf(stderr, "chakrav: settings lamps=0x%02x bright=%d gate=%.0f dB hold=%u ms map=%d lang=%d\n", s->lamps,
             s->brightness, (double)cfg.threshold_db, (unsigned)cfg.hold_ms, (int)cfg.map, s->lang);
     if (s->map == CHAKRA_MAP_BOWLS) {
-        fprintf(stderr, "chakra: bowls %.1f %.1f %.1f %.1f %.1f %.1f %.1f Hz\n", (double)s->bowl_hz[0],
+        fprintf(stderr, "chakrav: bowls %.1f %.1f %.1f %.1f %.1f %.1f %.1f Hz\n", (double)s->bowl_hz[0],
                 (double)s->bowl_hz[1], (double)s->bowl_hz[2], (double)s->bowl_hz[3], (double)s->bowl_hz[4],
                 (double)s->bowl_hz[5], (double)s->bowl_hz[6]);
     }
@@ -170,7 +265,7 @@ static uint32_t now_ms(void *ctx)
 static void on_close(void *ctx)
 {
     (void)ctx;
-    fprintf(stderr, "chakra: top bar held 3 s, the board would go back to Vibe Mode now\n");
+    fprintf(stderr, "chakrav: top bar held 3 s, the board would go back to Vibe Mode now\n");
     send_text("close\n");
 }
 
@@ -222,7 +317,7 @@ static int poll_audio(chakra_reading_t *out, void *ctx)
         last_conn = conn;
         chakra_core_set_connection(host.core, conn);
     }
-    poll_ai();
+    poll_lines();
     if (host.listener >= 0) {
         int fd = accept(host.listener, NULL, NULL);
         if (fd >= 0) {
@@ -283,12 +378,16 @@ static int poll_audio(chakra_reading_t *out, void *ctx)
 esp_gsp_err_t gsp_bridge_app_init(esp_gsp_handle_t ui)
 {
     host.listener = listen_loopback(feed_port(), "audio (s16le mono 16 kHz)");
+    for (int i = 0; i < LINE_CLIENTS; ++i) {
+        host.lines[i].fd = -1;
+    }
     const char *ai_env = getenv("CHAKRA_AI_PORT");
-    host.ai_listener = listen_loopback(ai_env ? atoi(ai_env) : feed_port() + 1, "AI sound gate lines");
+    host.ai_listener = listen_loopback(ai_env ? atoi(ai_env) : 8711, "lines (AI sound gate, camera)");
     chakra_core_config_t cfg = {.poll = poll_audio, .on_light = on_light, .on_settings = on_settings,
                                 .on_close = on_close, .now_ms = now_ms};
     chakra_settings_defaults(&cfg.settings);
     host.lamps = cfg.settings.lamps;
+    host.settings = cfg.settings;
     chakra_detect_config_t dc;
     chakra_settings_detect(&cfg.settings, &dc);
     host.detect = chakra_detect_create(&dc);
@@ -318,6 +417,7 @@ esp_gsp_err_t gsp_bridge_app_init(esp_gsp_handle_t ui)
         }
         snprintf(lamps[1].name, sizeof(lamps[1].name), "%s", name && *name ? name : "Living room LED strip");
         chakra_core_set_lamps(host.core, lamps, CHAKRA_LAMPS);
+        chakra_core_set_camera_source(host.core, "No camera yet");  // camera_live.py names its source
     }
     return e;
 }
@@ -325,7 +425,7 @@ esp_gsp_err_t gsp_bridge_app_init(esp_gsp_handle_t ui)
 void gsp_bridge_app_deinit(esp_gsp_handle_t ui)
 {
     (void)ui;
-    fprintf(stderr, "chakra: %lu hops analysed\n", host.hops);
+    fprintf(stderr, "chakrav: %lu hops analysed\n", host.hops);
     chakra_core_destroy(&host.core);
     chakra_detect_destroy(host.detect);
     if (host.client >= 0) {
@@ -334,8 +434,10 @@ void gsp_bridge_app_deinit(esp_gsp_handle_t ui)
     if (host.listener >= 0) {
         close(host.listener);
     }
-    if (host.ai_client >= 0) {
-        close(host.ai_client);
+    for (int i = 0; i < LINE_CLIENTS; ++i) {
+        if (host.lines[i].fd >= 0) {
+            close(host.lines[i].fd);
+        }
     }
     if (host.ai_listener >= 0) {
         close(host.ai_listener);
