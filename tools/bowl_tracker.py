@@ -11,7 +11,9 @@ What: detect_owl.py hands each frame's detections, the motion inside every box a
           when no track is confirmed, when the whole picture changes (a person passing, the camera moved:
           the bowls stay, and age out only after MISS_LIMIT frames unfound), and
           every frame while a mallet is in view, because a mallet moves).
-        * Played: a track whose pixels move most (a hand or a mallet on it), that a mallet box touches, or
+        * Helpers: a hand or a mallet plays the bowl it covers most; a "bowl" found on a foot or a head
+          is dropped; helpers are never drawn. Two tracks on one bowl are merged.
+        * Played: a track whose pixels move most (a hand or a mallet on it), that a hand or mallet covers, or
           whose learned chakra the app hears now.
         * The percent on a mark is how steadily it is found (in 8 of the last 8 detections: 100 %), not
           OWL-ViT's score: that is no probability and stays near 0.1 to 0.3 even for a plain bowl.
@@ -45,9 +47,20 @@ CONFIRM = 2         # detections before a track is shown
 SEEN_OF = 8         # the percent on a mark: found in how many of the last 8 detections
 ONSET_FRAMES = 3    # how far back a moving bowl counts for a new tone
 VOTES_NEEDED = 2
-MAX_MARKS = 4
-PLAYERS = {"Mallet"}
+MAX_MARKS = 7       # the owner plays 7 chakra bowls; the app draws CHAKRA_BOXES of them
+SHOW_STEADY = 0.25  # a track found in fewer than a quarter of the last detections is no longer drawn
+PLAYERS = {"Mallet", "Hand"}  # these play an instrument they are on; tracked only where last seen
+BLOCKERS = {"Foot", "Leg", "Head"}  # a "bowl" found on one of these is that, not a bowl (a foot was, 25.10.2026)
+HIDDEN = {"Hand"} | BLOCKERS  # helpers, never drawn
+TOUCH = 0.15        # a player covering this share of a bowl touches it (the bowl it covers most)
+DUPLICATE = 0.75    # two tracks of one label whose overlap covers this share of the smaller are one
 INSTRUMENTS = {"Singing bowl", "Gong", "Drum", "Tuning fork", "Chimes", "Rainstick"}
+
+
+def inter(a, b) -> float:
+    w = max(0.0, min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0]))
+    h = max(0.0, min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1]))
+    return w * h
 
 
 def iou(a, b) -> float:
@@ -106,6 +119,9 @@ class Tracker:
 
     def detections(self, found) -> None:
         """This frame's detections: [(label, x, y, w, h, score)], best first."""
+        blockers = [f[1:5] for f in found if f[0] in BLOCKERS]
+        found = [f for f in found if f[0] not in BLOCKERS and
+                 not (f[0] not in PLAYERS and any(inter(f[1:5], b) > 0.5 * f[3] * f[4] for b in blockers))]
         used = set()
         for label, *box, score in found:
             best, best_iou = None, IOU_MATCH
@@ -127,6 +143,19 @@ class Tracker:
                 if t.label in PLAYERS:
                     t.missed = MISS_LIMIT + 1  # a mallet is only where it was last seen
         self.tracks = [t for t in self.tracks if t.missed <= MISS_LIMIT]
+        self.merge()
+
+    def merge(self) -> None:
+        """One bowl, one track: OWL often finds a bowl twice (the bowl, and the bowl with its shadow)."""
+        keep = []
+        for t in sorted(self.tracks, key=lambda t: -t.hits):
+            twin = next((k for k in keep if k.label == t.label and t.label not in PLAYERS and
+                         inter(t.box, k.box) > DUPLICATE * min(t.box[2] * t.box[3], k.box[2] * k.box[3])), None)
+            if twin is None:
+                keep.append(t)
+            else:
+                twin.votes = [a + b for a, b in zip(twin.votes, t.votes)]
+        self.tracks = keep
 
     def step(self, motions, heard: int):
         """After detections() (or without, on a skipped frame): the motion inside each track's box, in
@@ -145,11 +174,19 @@ class Tracker:
         marks = []
         # Moving means clearly the most: a hand passing over the row stirs every box a little.
         top = max((t.motion[-1] for t in shown if t.label not in PLAYERS), default=0.0)
+        # A hand or a mallet touches the one bowl it covers most, not every box it grazes.
+        touched_ids = set()
+        for p in players:
+            cover = [(inter(p.box, t.box) / (t.box[2] * t.box[3] + 1e-9), id(t)) for t in shown if t.label not in PLAYERS]
+            if cover and max(cover)[0] > TOUCH:
+                touched_ids.add(max(cover)[1])
         for t in shown:
+            if t.label in HIDDEN or t.steady < SHOW_STEADY:
+                continue
             played = 0
             if t.label not in PLAYERS:
                 moving = t.motion[-1] > MOTION and t.motion[-1] >= LEAD * top
-                touched = any(iou(t.box, p.box) > 0.0 for p in players)
+                touched = id(t) in touched_ids
                 sounding = t.chakra >= 0 and t.chakra == heard
                 played = 1 if moving or touched or sounding else 0
             label = f"Bowl {NOTES[t.chakra]}" if t.label == "Singing bowl" and t.chakra >= 0 else t.label
@@ -187,6 +224,17 @@ def self_test() -> None:
         tr.detections([("Singing bowl", 0.4, 0.4, 0.2, 0.2, 0.3)])  # the camera moved: new place
         tr.step([0.0] * len(tr.tracks), -1)
     assert [t.box[:2] for t in tr.tracks] == [[0.4, 0.4]], [t.box for t in tr.tracks]  # the old ones aged out
+    tr = Tracker()
+    for _ in range(3):  # a foot found as a bowl, and found as a foot: no bowl
+        tr.detections([("Singing bowl", 0.0, 0.5, 0.2, 0.2, 0.2), ("Foot", 0.0, 0.48, 0.25, 0.25, 0.3)])
+        m = tr.step([0.0] * len(tr.tracks), -1)
+    assert m == [], m
+    tr = Tracker()
+    for _ in range(3):  # one bowl found twice, and a hand on it
+        tr.detections([("Singing bowl", 0.3, 0.3, 0.2, 0.2, 0.4), ("Singing bowl", 0.31, 0.3, 0.2, 0.24, 0.3),
+                       ("Singing bowl", 0.7, 0.3, 0.2, 0.2, 0.3), ("Hand", 0.35, 0.35, 0.1, 0.1, 0.3)])
+        m = tr.step([0.0] * len(tr.tracks), -1)
+    assert len(m) == 2 and [x[6] for x in m] == [1, 0] and m[0][1] < 0.5, m  # merged, the hand's bowl played
     print("self-test ok")
 
 
