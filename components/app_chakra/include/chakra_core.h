@@ -141,9 +141,11 @@ void chakra_core_set_lamps(chakra_core_handle_t c, const chakra_lamp_t *lamps, i
  *  while the camera is off in the settings. Returns false for a frame of another size. UI task only. */
 bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t size);
 /** Instrument mark `index` (0..CHAKRA_BOXES-1): label ("Singing bowl"), box normalised to the view
- *  (0..1 from the top left), confidence 0..1. Shown while the Boxes setting is on. UI task only. */
+ *  (0..1 from the top left), confidence 0..1, and whether it is being played (struck or rubbed now:
+ *  a hand or mallet moves on it). A seen mark is drawn quiet (grey), a played one in the light's
+ *  colour with "playing" in its tag. Shown while the Boxes setting is on. UI task only. */
 void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, float x, float y, float w, float h,
-                         float confidence);
+                         float confidence, bool played);
 /** Hides every mark (the detector sees nothing, or its frame is older than the picture). */
 void chakra_core_clear_boxes(chakra_core_handle_t c);
 /** The camera's source: kind (CHAKRA_SOURCE_*) for the mode mark, text as one quiet line on the

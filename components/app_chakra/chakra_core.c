@@ -24,6 +24,7 @@
 #define HOLD_MS 3000
 #define HOLD_STEP_MS 30
 #define IDLE_RGB 0x17141Fu
+#define PLAY_EDGE 6               // a played mark's thick edges (make_scene.py PLAY_EDGE)
 #define ON_RGB 0x6E5ACFu       // a chosen option or a ticked lamp
 #define OFF_RGB 0x3A3744u      // an option not chosen
 #define ROW_RGB 0x2C2936u      // a lamp not ticked
@@ -136,6 +137,7 @@ struct chakra_core {
         bool on;
         char label[40];
         float conf;
+        bool played;      // a hand or mallet moves on it now
         int x, y, w, h;   // pixels inside the view
     } box[CHAKRA_BOXES];
     char cam_src[48];
@@ -443,6 +445,18 @@ static void draw_box_geometry(struct chakra_core *c)
     static esp_gsp_err_t (*const set_pill[CHAKRA_BOXES])(esp_gsp_handle_t, int32_t) = {
         gsp_chakra_box_pill_0_set_width, gsp_chakra_box_pill_1_set_width, gsp_chakra_box_pill_2_set_width,
         gsp_chakra_box_pill_3_set_width};
+#define PLAY_SETTERS(i)                                                                                     \
+    {gsp_chakra_play_t_##i##_set_width, gsp_chakra_play_l_##i##_set_height, gsp_chakra_play_r_##i##_set_x,       \
+     gsp_chakra_play_r_##i##_set_height, gsp_chakra_play_b_##i##_set_y, gsp_chakra_play_b_##i##_set_width,       \
+     gsp_chakra_box_ppill_##i##_set_width}
+    static esp_gsp_err_t (*const set_play[CHAKRA_BOXES][7])(esp_gsp_handle_t, int32_t) = {
+        PLAY_SETTERS(0), PLAY_SETTERS(1), PLAY_SETTERS(2), PLAY_SETTERS(3)};
+#undef PLAY_SETTERS
+    static esp_gsp_err_t (*const play_vis[CHAKRA_BOXES][2])(esp_gsp_handle_t, bool) = {
+        {gsp_chakra_grp_play_0_set_visible, gsp_chakra_box_ppill_0_set_visible},
+        {gsp_chakra_grp_play_1_set_visible, gsp_chakra_box_ppill_1_set_visible},
+        {gsp_chakra_grp_play_2_set_visible, gsp_chakra_box_ppill_2_set_visible},
+        {gsp_chakra_grp_play_3_set_visible, gsp_chakra_box_ppill_3_set_visible}};
     if (!c->s.cam_on || !c->s.cam_boxes || !c->picture) {
         return;
     }
@@ -461,9 +475,17 @@ static void draw_box_geometry(struct chakra_core *c)
         if (!spare(c)) {
             return;
         }
+        /* Seen: the thin grey edges alone. Played: the thick amber layer over them, and "playing". */
+        put(c, play_vis[i][0], c->box[i].played);
+        put(c, play_vis[i][1], c->box[i].played);
         char text[64];
         const int pct = (int)(c->box[i].conf * 100.0f + 0.5f);
-        snprintf(text, sizeof(text), "%s %d %%", label_text(c, c->box[i].label), pct < 0 ? 0 : pct > 100 ? 100 : pct);
+        if (c->box[i].played) {
+            snprintf(text, sizeof(text), "%s · %s", label_text(c, c->box[i].label),
+                     c->s.lang == CHAKRA_LANG_DE ? "spielt" : "playing");
+        } else {
+            snprintf(text, sizeof(text), "%s %d %%", label_text(c, c->box[i].label), pct < 0 ? 0 : pct > 100 ? 100 : pct);
+        }
         put(c, set_label[i], text);
         if (!spare(c)) {
             return;
@@ -475,6 +497,12 @@ static void draw_box_geometry(struct chakra_core *c)
         int pill = 18 + chars * 66 / 10;
         pill = pill < 40 ? 40 : pill > PILL_MAX ? PILL_MAX : pill;
         put(c, set_pill[i], pill);
+        if (c->box[i].played) {
+            const int32_t pv[7] = {w, h, w - PLAY_EDGE, h, h - PLAY_EDGE, w, pill};
+            for (int k = 0; k < 7 && spare(c); ++k) {
+                put(c, set_play[i][k], pv[k]);
+            }
+        }
         put(c, set_tag[i], x + pill > CHAKRA_CAM_W ? CHAKRA_CAM_W - (x + pill) : 0);
         put(c, vis[i], true);
     }
@@ -1303,7 +1331,7 @@ bool chakra_core_set_frame(chakra_core_handle_t c, const uint8_t *data, size_t s
 }
 
 void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, float x, float y, float w, float h,
-                         float confidence)
+                         float confidence, bool played)
 {
     if (!c || index < 0 || index >= CHAKRA_BOXES || !label) {
         return;
@@ -1315,6 +1343,7 @@ void chakra_core_set_box(chakra_core_handle_t c, int index, const char *label, f
     ph = ph < BOX_MIN ? BOX_MIN : ph > CHAKRA_CAM_H - py ? CHAKRA_CAM_H - py : ph;
     snprintf(c->box[index].label, sizeof(c->box[index].label), "%s", label);
     c->box[index].conf = confidence;
+    c->box[index].played = played;
     c->box[index].on = true;
     c->box[index].x = px;
     c->box[index].y = py;

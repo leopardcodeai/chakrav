@@ -15,13 +15,15 @@
 //   sound\t<bowl|other|none>\t<strike 0|1>              the AI sound gate's verdict
 //   frame\t<path>[\t<luma>]                             a JPEG of CHAKRA_CAM_W x CHAKRA_CAM_H, read at once;
 //                                                        its mean luma 0..255 drives the light's Auto
-//   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>            a mark, normalised 0..1; a frame's boxes follow it
+//   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>[\t<played 0|1>]   a mark, normalised 0..1; a frame's boxes follow it
 //   boxes\tclear                                          before each frame's boxes
 //   source\t<text>[\t<camera|video|demo>]                 the Camera page's source line and the mode mark
 // out, to every line client when it connects and on each change of the settings:
 //   camera\t<on 0|1>\t<boxes 0|1>\t<fps 1|2|4>\t<cloud 0|1>
 // and whenever the camera's light should change (Off, On, Auto's verdict):
 //   camlight\t<on 0|1>\t<dark 0|1>      the Mac's camera has no light to switch: camera_live.py reports it
+// and whenever the detector's locked chakra changes (the sound, not the colour setting):
+//   heard\t<chakra 0..6|-1>             camera_live.py's tracker binds the struck bowl to the note it heard
 // 127.0.0.1 only. All socket work is non-blocking and runs in the core's 40 ms tick on the
 // bridge's single thread.
 #include <errno.h>
@@ -164,7 +166,8 @@ static void line_in(char *line)
         chakra_core_clear_boxes(host.core);
     } else if (strcmp(f[0], "box") == 0 && n >= 7 && host.box_next < CHAKRA_BOXES) {
         chakra_core_set_box(host.core, host.box_next++, f[1], strtof(f[2], NULL), strtof(f[3], NULL),
-                            strtof(f[4], NULL), strtof(f[5], NULL), n >= 7 ? strtof(f[6], NULL) : 1.0f);
+                            strtof(f[4], NULL), strtof(f[5], NULL), n >= 7 ? strtof(f[6], NULL) : 1.0f,
+                            n >= 8 && atoi(f[7]) == 1);
     } else if (strcmp(f[0], "source") == 0 && n >= 2) {
         const int kind = n < 3 || strcmp(f[2], "camera") == 0 ? CHAKRA_SOURCE_CAMERA
                          : strcmp(f[2], "video") == 0         ? CHAKRA_SOURCE_VIDEO
@@ -405,6 +408,17 @@ static int poll_audio(chakra_reading_t *out, void *ctx)
     if (hops) {
         send_reading(out);
         send_bars(out);
+        static int heard = -2;
+        if (out->chakra != heard) {
+            heard = out->chakra;
+            char line[24];
+            snprintf(line, sizeof(line), "heard\t%d\n", heard);
+            for (int i = 0; i < LINE_CLIENTS; ++i) {
+                if (host.lines[i].fd >= 0) {
+                    (void)!write(host.lines[i].fd, line, strlen(line));
+                }
+            }
+        }
     }
     /* CHAKRA_LOG=1: one reading a second on stderr, for tests against recordings. */
     static const char *log;

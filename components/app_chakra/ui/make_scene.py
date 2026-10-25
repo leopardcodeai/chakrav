@@ -50,6 +50,8 @@ CAM_Y = FRAME + TOP_H + 4
 BOXES = 4                # chakra_core.h CHAKRA_BOXES
 BOX_RGB = ["#64D2FF", "#FFD60A", "#30D158", "#FF9F0A"]  # one colour per box slot
 EDGE, BOX_MIN = 3, 16    # a box's edge width; its smallest width and height
+PLAY_EDGE = 6            # a played box's edges, thicker
+SEEN, PLAYED = "#8E8E93", "#FF9F0A"  # a mark only seen: quiet grey; being played: amber, thick
 PILL_MAX = 150           # a box's label pill at its widest
 BARS = 8                 # the small spectrum below the view: the detection's 16 bands in pairs
 # Material Design Icons 7.4.47: cog, home-assistant, lightbulb, wifi, bluetooth, check-circle, monitor,
@@ -165,19 +167,32 @@ def camera_view():
             y={"default": 40 + 30 * i, "min": 0, "max": CAM_H, "property": "y"}, w=CAM_W, h=CAM_H, bg_opacity=0)
         dyn_w = {"default": 140, "min": BOX_MIN, "max": CAM_W, "property": "width"}
         dyn_h = {"default": 110, "min": BOX_MIN, "max": CAM_H, "property": "height"}
-        add("container", f"box_t_{i}", g, x=0, y=0, w=dyn_w, h=EDGE, bg_color=BOX_RGB[i])
-        add("container", f"box_l_{i}", g, x=0, y=0, w=EDGE, h=dyn_h, bg_color=BOX_RGB[i])
+        # Seen: these thin edges in grey. Played: the group grp_play_i below adds thick amber edges.
+        # (GSP 1.5.1 refuses a bound colour on a container with a dynamic size: "Invalid GSB render
+        # effects"; so the played look is a second layer that is shown or hidden.)
+        add("container", f"box_t_{i}", g, x=0, y=0, w=dyn_w, h=EDGE, bg_color=SEEN)
+        add("container", f"box_l_{i}", g, x=0, y=0, w=EDGE, h=dyn_h, bg_color=SEEN)
         add("container", f"box_r_{i}", g, x={"default": 137, "min": 0, "max": CAM_W, "property": "x"}, y=0,
-            w=EDGE, h=dyn_h, bg_color=BOX_RGB[i])
+            w=EDGE, h=dyn_h, bg_color=SEEN)
         add("container", f"box_b_{i}", g, x=0, y={"default": 107, "min": 0, "max": CAM_H, "property": "y"},
-            w=dyn_w, h=EDGE, bg_color=BOX_RGB[i])
+            w=dyn_w, h=EDGE, bg_color=SEEN)
+        p = f"grp_play_{i}"
+        add("container", p, g, x=0, y=0, w=CAM_W, h=CAM_H, bg_opacity=0, hidden=True, bind=p, bind_target="visible")
+        add("container", f"play_t_{i}", p, x=0, y=0, w=dyn_w, h=PLAY_EDGE, bg_color=PLAYED)
+        add("container", f"play_l_{i}", p, x=0, y=0, w=PLAY_EDGE, h=dyn_h, bg_color=PLAYED)
+        add("container", f"play_r_{i}", p, x={"default": 137, "min": 0, "max": CAM_W, "property": "x"}, y=0,
+            w=PLAY_EDGE, h=dyn_h, bg_color=PLAYED)
+        add("container", f"play_b_{i}", p, x=0, y={"default": 107, "min": 0, "max": CAM_H, "property": "y"},
+            w=dyn_w, h=PLAY_EDGE, bg_color=PLAYED)
         # The label pill: its width follows the text (chakra_core.c estimates it), at most PILL_MAX.
         # A box at the view's right edge moves its tag left, so the clip never cuts the label.
         tag = f"box_tag_{i}"
         add("container", tag, g, x={"default": 0, "min": -PILL_MAX, "max": 0, "property": "x"}, y=0,
             w=PILL_MAX, h=22, bg_opacity=0)
         add("container", f"box_pill_{i}", tag, x=0, y=0, w={"default": 130, "min": 40, "max": PILL_MAX, "property": "width"},
-            h=22, radius=11, bg_color=BOX_RGB[i])
+            h=22, radius=11, bg_color=SEEN)
+        add("container", f"box_ppill_{i}", tag, x=0, y=0, hidden=True, bind=f"box_ppill_{i}", bind_target="visible",
+            w={"default": 130, "min": 40, "max": PILL_MAX, "property": "width"}, h=22, radius=11, bg_color=PLAYED)
         text(f"box_label_{i}", tag, 9, 3, PILL_MAX - 14, 16, 12, BOLD, INK, sample="Singing bowl 92 %", overflow="ellipsis")
     band = SCREEN_RADIUS // 2  # DESIGN.md: >= 0.42 x the radius covers the corner
     add("container", None, None, x=CAM_X - band, y=CAM_Y - band, w=CAM_W + 2 * band, h=CAM_H + 2 * band,

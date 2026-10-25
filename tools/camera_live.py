@@ -12,6 +12,7 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
                                                   per frame with marks, normalised 0..1
       It follows the app's Camera settings, which come back on the same socket as
         camera<TAB><on 0|1><TAB><boxes 0|1><TAB><fps 1|2|4><TAB><cloud 0|1>
+      and heard<TAB><chakra 0..6|-1>, which --detect passes on to the tracker (bowl_tracker.py).
       With the camera off it stops ffmpeg, so the Mac's camera (and its green light) is off too.
       Cloud AI (EXPERIMENTAL, off by default): only when it is On in the app AND an OPENAI_API_KEY or
       GEMINI_API_KEY is in the environment, each frame goes to tools/cloud_vision.py, a stub that
@@ -63,6 +64,7 @@ class App:
 
     def __init__(self, port: int, wait: bool):
         self.on, self.boxes, self.fps, self.cloud = True, True, 2, False
+        self.heard = -1  # the chakra the app hears now (its "heard" line), a hint for the tracker
         self.changed = threading.Event()
         self.closed = False
         for attempt in range(120 if wait else 1):
@@ -91,6 +93,8 @@ class App:
             while b"\n" in buf:
                 line, buf = buf.split(b"\n", 1)
                 f = line.decode(errors="replace").split("\t")
+                if len(f) == 2 and f[0] == "heard":
+                    self.heard = int(f[1]) if f[1].lstrip("-").isdigit() else -1
                 if len(f) == 3 and f[0] == "camlight":
                     # The Mac's camera has no light to switch; on the board this is the flash LED.
                     print(f"camera light {'on' if f[1] == '1' else 'off'}"
@@ -195,19 +199,33 @@ class StubBoxes:
 
     def boxes(self):
         t = time.monotonic() - self.t0
+        # The first box counts as played for 2 s out of every 5, so both looks can be checked.
+        played = (t % 5.0) < 2.0
         return [(label, min(0.95 - w, max(0.0, x + self.rng.uniform(-0.01, 0.01))), y, w, h,
-                 max(0.3, min(0.99, c + self.rng.uniform(-0.03, 0.03)))) for label, x, y, w, h, c in demo_objects(t)]
+                 max(0.3, min(0.99, c + self.rng.uniform(-0.03, 0.03))), 1 if (k == 0 and played) else 0)
+                for k, (label, x, y, w, h, c) in enumerate(demo_objects(t))]
 
 
 # ------------------------------------------------------------------ the camera --
 
-def ffmpeg_camera(device: str, fps: int, video: str | None = None) -> subprocess.Popen:
-    vf = f"fps={fps},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
+def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 1) -> subprocess.Popen:
+    """Frames of the view's crop; scale 2 gives the detector twice the size (app_frame() makes the app's)."""
+    w, h = W * scale, H * scale
+    vf = f"fps={fps},scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h}"
     # A video file instead of the camera: in real time, looped, its sound left to chakra_feed.py.
     src = ["-re", "-stream_loop", "-1", "-i", video, "-an"] if video else \
         ["-f", "avfoundation", "-framerate", "30", "-i", f"{device}:none"]
     return subprocess.Popen(["ffmpeg", "-loglevel", "error", *src, "-vf", vf, "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-"],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+def app_frame(jpeg: bytes) -> bytes:
+    """The view's exact W x H from a bigger frame of the same crop."""
+    from io import BytesIO
+    from PIL import Image
+    out = BytesIO()
+    Image.open(BytesIO(jpeg)).convert("RGB").resize((W, H), Image.LANCZOS).save(out, "JPEG", quality=85)
+    return out.getvalue()
 
 
 def jpeg_frames(proc: subprocess.Popen):
@@ -250,11 +268,11 @@ class Detector:
         self.proc = subprocess.Popen([self.VENV, os.path.join(here, "detect_owl.py")], stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
-    def boxes(self, jpeg: bytes):
+    def boxes(self, jpeg: bytes, heard: int = -1):
         import json
         import struct
         try:
-            self.proc.stdin.write(struct.pack(">I", len(jpeg)) + jpeg)
+            self.proc.stdin.write(struct.pack(">Ib", len(jpeg), max(-1, min(6, heard))) + jpeg)
             self.proc.stdin.flush()
             line = self.proc.stdout.readline()
             return [tuple(b) for b in json.loads(line)] if line else None
@@ -273,7 +291,8 @@ def send_frame(app: App, files: FrameFile, jpeg: bytes, boxes) -> None:
     lines = f"frame\t{files.write(jpeg)}\t{frame_stats(jpeg)[0]}\n"
     if app.boxes and boxes is not None:
         lines += "boxes\tclear\n" + "".join(
-            f"box\t{label}\t{x:.3f}\t{y:.3f}\t{w:.3f}\t{h:.3f}\t{c:.2f}\n" for label, x, y, w, h, c in boxes[:4])
+            f"box\t{b[0]}\t{b[1]:.3f}\t{b[2]:.3f}\t{b[3]:.3f}\t{b[4]:.3f}\t{b[5]:.2f}"
+            + (f"\t{int(b[6])}" if len(b) > 6 else "") + "\n" for b in boxes[:4])
     app.send(lines)
 
 
@@ -286,13 +305,16 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
             continue
         app.changed.clear()
         fps = app.fps
-        proc = ffmpeg_camera(device, fps, video)
+        # OWL-ViT finds the bowls at 0.05 in the view's 368 x 276 and at 0.2 to 0.4 in twice that
+        # (25.10.2026, the owner's video): the detector gets the double size, the app its own.
+        big = isinstance(stub, Detector)
+        proc = ffmpeg_camera(device, fps, video, 2 if big else 1)
         print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps", flush=True)
         n = 0
         for jpeg in jpeg_frames(proc):
             n += 1
-            boxes = stub.boxes(jpeg) if isinstance(stub, Detector) else stub.boxes() if stub else None
-            send_frame(app, files, jpeg, boxes)
+            boxes = stub.boxes(jpeg, app.heard) if big else stub.boxes() if stub else None
+            send_frame(app, files, app_frame(jpeg) if big else jpeg, boxes)
             if app.closed or not app.on or app.fps != fps:
                 break
         proc.terminate()

@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Marks instruments in camera frames with OWL-ViT, an open-vocabulary detector, on the Mac.
 
-What: reads frames on stdin, each as a 4-byte big-endian length and a JPEG, and answers each with
-      one JSON line on stdout: [[label, x, y, w, h, score], ...], normalised 0..1, at most MAX_BOXES,
-      best first. It looks for the words in LABELS (google/owlvit-base-patch32, zero-shot: no
-      training on our instruments), keeps boxes over THRESHOLD and drops a box that overlaps a
-      better one of the same label by more than half. camera_live.py --detect runs it.
-Why:  owner 25.10.2026: "teste in ChakraV, dann sehe ich, wie erkannt wird, auch mit Markierung".
+What: reads frames on stdin, each as a 4-byte big-endian length, one signed byte with the chakra the app
+      hears now (-1 none) and a JPEG, and answers each with one JSON line on stdout:
+      [[label, x, y, w, h, score, played], ...], normalised 0..1, at most 4. It looks for the words in
+      LABELS (google/owlvit-base-patch32, zero-shot: no training on our instruments), keeps boxes over
+      THRESHOLD and drops a box that overlaps a better one of the same label by more than half.
+      bowl_tracker.py keeps what it found from frame to frame (bowls stay bowls and stay where they are),
+      runs the model only when needed (every 4th frame in a still scene), marks a bowl played when it
+      moves, a mallet touches it or its learned note sounds, and labels a bowl with its note ("Bowl C")
+      once heard and seen together. camera_live.py --detect runs it.
+Why:  owner 25.10.2026: "teste in ChakraV, dann sehe ich, wie erkannt wird, auch mit Markierung";
+      and "muss ja nicht jedes Frame komplett neu bewerten", the mallet and the sound as hints.
       The first real detector, before a trained ESPDet-Pico on the ESP32-S31.
 Pitfalls:
   * On the Mac's GPU (MPS) a frame takes well under a second; on the CPU about 2 s, too slow for 2 fps.
@@ -28,7 +33,7 @@ LABELS = ["a metal singing bowl", "a large gong hanging in a frame", "a hand dru
           "a tuning fork", "wind chimes", "a rainstick"]
 SHOW = {"a metal singing bowl": "Singing bowl", "a large gong hanging in a frame": "Gong", "a hand drum": "Drum",
         "a felt mallet": "Mallet", "a tuning fork": "Tuning fork", "wind chimes": "Chimes", "a rainstick": "Rainstick"}
-THRESHOLD, MAX_BOXES = 0.10, 4
+THRESHOLD, FIND_BOXES = 0.10, 8  # up to 8 found; the tracker keeps them and the app draws 4
 MODEL = "google/owlvit-base-patch32"
 
 
@@ -54,13 +59,10 @@ def main():
     model = OwlViTForObjectDetection.from_pretrained(MODEL).eval().to(dev)
     with torch.no_grad():
         text = proc(text=[LABELS], return_tensors="pt")
-    inp, out = sys.stdin.buffer, sys.stdout
-    while True:
-        head = inp.read(4)
-        if len(head) < 4:
-            return
-        (n,) = struct.unpack(">I", head)
-        img = Image.open(io.BytesIO(inp.read(n))).convert("RGB")
+    import numpy as np
+
+    def detect(img):
+        """One frame's boxes [(label, x, y, w, h, score)], best first, one per place and label."""
         with torch.no_grad():
             pix = proc(images=img, return_tensors="pt")
             res = model(input_ids=text["input_ids"].to(dev), attention_mask=text["attention_mask"].to(dev),
@@ -76,10 +78,36 @@ def main():
             name = SHOW[LABELS[lab]]
             if any(o[0] == name and iou(b, o[1:5]) > 0.5 for o in boxes):
                 continue
-            boxes.append([name, *[round(v, 3) for v in b], round(score, 2)])
-            if len(boxes) >= MAX_BOXES:
+            boxes.append((name, *[round(v, 3) for v in b], round(score, 2)))
+            if len(boxes) >= FIND_BOXES:
                 break
-        out.write(json.dumps(boxes) + "\n")
+        return boxes
+
+    sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent))
+    import bowl_tracker
+    tracker = bowl_tracker.Tracker()
+    inp, out = sys.stdin.buffer, sys.stdout
+    prev = None  # the last frame in grey, for the motion inside each box
+    while True:
+        head = inp.read(5)
+        if len(head) < 5:
+            return
+        n, heard = struct.unpack(">Ib", head)
+        img = Image.open(io.BytesIO(inp.read(n))).convert("RGB")
+        grey = np.asarray(img.convert("L"), dtype=np.float32)
+        same = prev is not None and prev.shape == grey.shape
+        scene = float(np.abs(grey[::8, ::8] - prev[::8, ::8]).mean()) if same else 0.0
+        if tracker.need_detect(scene):
+            tracker.detections(detect(img))
+        # The motion inside each kept box: a hand or a mallet on a bowl changes its pixels, a still bowl does not.
+        H, W = grey.shape
+        motions = []
+        for t in tracker.tracks:
+            x0, y0 = int(max(0.0, t.box[0]) * W), int(max(0.0, t.box[1]) * H)
+            x1, y1 = max(x0 + 1, int((t.box[0] + t.box[2]) * W)), max(y0 + 1, int((t.box[1] + t.box[3]) * H))
+            motions.append(float(np.abs(grey[y0:y1, x0:x1] - prev[y0:y1, x0:x1]).mean()) if same else 0.0)
+        prev = grey
+        out.write(json.dumps(tracker.step(motions, heard)) + "\n")
         out.flush()
 
 

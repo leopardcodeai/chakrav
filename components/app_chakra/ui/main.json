@@ -178,7 +178,7 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#64D2FF"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -193,7 +193,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#64D2FF"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -213,7 +213,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#64D2FF"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -233,7 +233,90 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#64D2FF"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_box_0",
+   "name": "grp_play_0",
+   "x": 0,
+   "y": 0,
+   "w": 368,
+   "h": 276,
+   "bg_opacity": 0,
+   "hidden": true,
+   "bind": "grp_play_0",
+   "bind_target": "visible"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_0",
+   "name": "play_t_0",
+   "x": 0,
+   "y": 0,
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_0",
+   "name": "play_l_0",
+   "x": 0,
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_0",
+   "name": "play_r_0",
+   "x": {
+    "default": 137,
+    "min": 0,
+    "max": 368,
+    "property": "x"
+   },
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_0",
+   "name": "play_b_0",
+   "x": 0,
+   "y": {
+    "default": 107,
+    "min": 0,
+    "max": 276,
+    "property": "y"
+   },
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "container",
@@ -264,7 +347,26 @@
    },
    "h": 22,
    "radius": 11,
-   "bg_color": "#64D2FF"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "box_tag_0",
+   "name": "box_ppill_0",
+   "x": 0,
+   "y": 0,
+   "hidden": true,
+   "bind": "box_ppill_0",
+   "bind_target": "visible",
+   "w": {
+    "default": 130,
+    "min": 40,
+    "max": 150,
+    "property": "width"
+   },
+   "h": 22,
+   "radius": 11,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "label",
@@ -319,7 +421,7 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#FFD60A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -334,7 +436,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#FFD60A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -354,7 +456,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#FFD60A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -374,7 +476,90 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#FFD60A"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_box_1",
+   "name": "grp_play_1",
+   "x": 0,
+   "y": 0,
+   "w": 368,
+   "h": 276,
+   "bg_opacity": 0,
+   "hidden": true,
+   "bind": "grp_play_1",
+   "bind_target": "visible"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_1",
+   "name": "play_t_1",
+   "x": 0,
+   "y": 0,
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_1",
+   "name": "play_l_1",
+   "x": 0,
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_1",
+   "name": "play_r_1",
+   "x": {
+    "default": 137,
+    "min": 0,
+    "max": 368,
+    "property": "x"
+   },
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_1",
+   "name": "play_b_1",
+   "x": 0,
+   "y": {
+    "default": 107,
+    "min": 0,
+    "max": 276,
+    "property": "y"
+   },
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "container",
@@ -405,7 +590,26 @@
    },
    "h": 22,
    "radius": 11,
-   "bg_color": "#FFD60A"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "box_tag_1",
+   "name": "box_ppill_1",
+   "x": 0,
+   "y": 0,
+   "hidden": true,
+   "bind": "box_ppill_1",
+   "bind_target": "visible",
+   "w": {
+    "default": 130,
+    "min": 40,
+    "max": 150,
+    "property": "width"
+   },
+   "h": 22,
+   "radius": 11,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "label",
@@ -460,7 +664,7 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#30D158"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -475,7 +679,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#30D158"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -495,7 +699,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#30D158"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -515,7 +719,90 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#30D158"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_box_2",
+   "name": "grp_play_2",
+   "x": 0,
+   "y": 0,
+   "w": 368,
+   "h": 276,
+   "bg_opacity": 0,
+   "hidden": true,
+   "bind": "grp_play_2",
+   "bind_target": "visible"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_2",
+   "name": "play_t_2",
+   "x": 0,
+   "y": 0,
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_2",
+   "name": "play_l_2",
+   "x": 0,
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_2",
+   "name": "play_r_2",
+   "x": {
+    "default": 137,
+    "min": 0,
+    "max": 368,
+    "property": "x"
+   },
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_2",
+   "name": "play_b_2",
+   "x": 0,
+   "y": {
+    "default": 107,
+    "min": 0,
+    "max": 276,
+    "property": "y"
+   },
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "container",
@@ -546,7 +833,26 @@
    },
    "h": 22,
    "radius": 11,
-   "bg_color": "#30D158"
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "box_tag_2",
+   "name": "box_ppill_2",
+   "x": 0,
+   "y": 0,
+   "hidden": true,
+   "bind": "box_ppill_2",
+   "bind_target": "visible",
+   "w": {
+    "default": 130,
+    "min": 40,
+    "max": 150,
+    "property": "width"
+   },
+   "h": 22,
+   "radius": 11,
+   "bg_color": "#FF9F0A"
   },
   {
    "type": "label",
@@ -601,7 +907,7 @@
     "property": "width"
    },
    "h": 3,
-   "bg_color": "#FF9F0A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -616,7 +922,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#FF9F0A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -636,7 +942,7 @@
     "max": 276,
     "property": "height"
    },
-   "bg_color": "#FF9F0A"
+   "bg_color": "#8E8E93"
   },
   {
    "type": "container",
@@ -656,6 +962,89 @@
     "property": "width"
    },
    "h": 3,
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_box_3",
+   "name": "grp_play_3",
+   "x": 0,
+   "y": 0,
+   "w": 368,
+   "h": 276,
+   "bg_opacity": 0,
+   "hidden": true,
+   "bind": "grp_play_3",
+   "bind_target": "visible"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_3",
+   "name": "play_t_3",
+   "x": 0,
+   "y": 0,
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_3",
+   "name": "play_l_3",
+   "x": 0,
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_3",
+   "name": "play_r_3",
+   "x": {
+    "default": 137,
+    "min": 0,
+    "max": 368,
+    "property": "x"
+   },
+   "y": 0,
+   "w": 6,
+   "h": {
+    "default": 110,
+    "min": 16,
+    "max": 276,
+    "property": "height"
+   },
+   "bg_color": "#FF9F0A"
+  },
+  {
+   "type": "container",
+   "parent_name": "grp_play_3",
+   "name": "play_b_3",
+   "x": 0,
+   "y": {
+    "default": 107,
+    "min": 0,
+    "max": 276,
+    "property": "y"
+   },
+   "w": {
+    "default": 140,
+    "min": 16,
+    "max": 368,
+    "property": "width"
+   },
+   "h": 6,
    "bg_color": "#FF9F0A"
   },
   {
@@ -679,6 +1068,25 @@
    "name": "box_pill_3",
    "x": 0,
    "y": 0,
+   "w": {
+    "default": 130,
+    "min": 40,
+    "max": 150,
+    "property": "width"
+   },
+   "h": 22,
+   "radius": 11,
+   "bg_color": "#8E8E93"
+  },
+  {
+   "type": "container",
+   "parent_name": "box_tag_3",
+   "name": "box_ppill_3",
+   "x": 0,
+   "y": 0,
+   "hidden": true,
+   "bind": "box_ppill_3",
+   "bind_target": "visible",
    "w": {
     "default": 130,
     "min": 40,
