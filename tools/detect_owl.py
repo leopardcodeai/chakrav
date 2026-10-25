@@ -9,7 +9,7 @@ What: reads frames on stdin, each as a 4-byte big-endian length and a JPEG, and 
 Why:  owner 25.10.2026: "teste in ChakraV, dann sehe ich, wie erkannt wird, auch mit Markierung".
       The first real detector, before a trained ESPDet-Pico on the ESP32-S31.
 Pitfalls:
-  * About 0.2 to 0.5 s per frame on the Mac's CPU: at 2 fps it keeps up, at 4 it lags.
+  * On the Mac's GPU (MPS) a frame takes well under a second; on the CPU about 2 s, too slow for 2 fps.
   * Zero-shot: bowls are found well, "gong" and "mallet" less so; a trained detector on your own
     labelled frames is the next step.
   * Needs the venv with torch and transformers (~/Library/Application Support/LeopardCode/chakra/
@@ -23,10 +23,12 @@ import json
 import struct
 import sys
 
-LABELS = ["singing bowl", "gong", "drum", "mallet", "tuning fork", "wind chimes", "rainstick", "person's hand"]
-SHOW = {"singing bowl": "Singing bowl", "gong": "Gong", "drum": "Drum", "mallet": "Mallet",
-        "tuning fork": "Tuning fork", "wind chimes": "Chimes", "rainstick": "Rainstick", "person's hand": "Hand"}
-THRESHOLD, MAX_BOXES = 0.12, 4
+# Prompts as phrases: "gong" alone pulled every metal bowl (25.10.2026, the owner's chakra bowls).
+LABELS = ["a metal singing bowl", "a large gong hanging in a frame", "a hand drum", "a felt mallet",
+          "a tuning fork", "wind chimes", "a rainstick"]
+SHOW = {"a metal singing bowl": "Singing bowl", "a large gong hanging in a frame": "Gong", "a hand drum": "Drum",
+        "a felt mallet": "Mallet", "a tuning fork": "Tuning fork", "wind chimes": "Chimes", "a rainstick": "Rainstick"}
+THRESHOLD, MAX_BOXES = 0.10, 4
 MODEL = "google/owlvit-base-patch32"
 
 
@@ -48,7 +50,8 @@ def main():
     from PIL import Image
     from transformers import OwlViTForObjectDetection, OwlViTProcessor
     proc = OwlViTProcessor.from_pretrained(MODEL)
-    model = OwlViTForObjectDetection.from_pretrained(MODEL).eval()
+    dev = "mps" if torch.backends.mps.is_available() else "cpu"  # the Mac's GPU: several times faster
+    model = OwlViTForObjectDetection.from_pretrained(MODEL).eval().to(dev)
     with torch.no_grad():
         text = proc(text=[LABELS], return_tensors="pt")
     inp, out = sys.stdin.buffer, sys.stdout
@@ -60,9 +63,10 @@ def main():
         img = Image.open(io.BytesIO(inp.read(n))).convert("RGB")
         with torch.no_grad():
             pix = proc(images=img, return_tensors="pt")
-            res = model(input_ids=text["input_ids"], attention_mask=text["attention_mask"],
-                        pixel_values=pix["pixel_values"])
-            post = proc.post_process_object_detection(res, threshold=THRESHOLD,
+            res = model(input_ids=text["input_ids"].to(dev), attention_mask=text["attention_mask"].to(dev),
+                        pixel_values=pix["pixel_values"].to(dev))
+            res.logits, res.pred_boxes = res.logits.cpu(), res.pred_boxes.cpu()
+            post = proc.image_processor.post_process_object_detection(res, threshold=THRESHOLD,
                                                       target_sizes=torch.tensor([[img.height, img.width]]))[0]
         boxes = []
         for score, lab, box in sorted(zip(post["scores"].tolist(), post["labels"].tolist(), post["boxes"].tolist()),
