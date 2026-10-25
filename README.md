@@ -41,7 +41,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 
 | Part | State |
 |---|---|
-| Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (676670f) |
+| Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (1cbd13c): strikes are found by the spectral flux, so a loud ringing bowl no longer masks the next ones (7 of 7 strikes in a round where Flow showed Root alone before; 0.4 s in Flow, 0.1 s in Strike) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
 | Live camera view: a square like the camera kit's preview, 270 x 270, from the Mac camera or a video, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`, emulating the V1.4 or V1.2 module) |
 | Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
@@ -190,7 +190,7 @@ Design references (25.10.2026):
 
 | Part | File |
 |---|---|
-| Detection: FFT, harmonics, steadiness, mappings | `components/app_chakra/chakra_detect.c` |
+| Detection: FFT, harmonics, steadiness, strikes (spectral flux), mappings | `components/app_chakra/chakra_detect.c` |
 | Screen: frame, camera view, boxes, pills, settings, hold to close | `components/app_chakra/chakra_core.c`, scene `ui/make_scene.py` |
 | Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 6) | `main/main.c` |
 | Board: the camera module, the square view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |

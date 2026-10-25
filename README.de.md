@@ -42,7 +42,7 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 
 | Teil | Stand |
 |---|---|
-| Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (676670f) |
+| Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (1cbd13c): Anschläge werden am spektralen Fluss erkannt, eine laut nachklingende Schale überdeckt die nächsten nicht mehr (7 von 7 Anschlägen einer Runde, in der Flow vorher nur Wurzel zeigte; 0,4 s in Flow, 0,1 s in Strike) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
 | Live-Kamerabild: ein Quadrat wie in der Vorschau des Kamera-Kits, 270 x 270, von der Mac-Kamera oder einem Video, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`, emuliert das Modul V1.4 oder V1.2) |
 | Instrument-Boxen mit kurzer Beschriftung ("Schale", "Schale C"), bis zu 7, eine je Chakra-Schale | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
