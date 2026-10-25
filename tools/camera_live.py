@@ -97,11 +97,19 @@ def module_view(module: str) -> dict:
             "tan": t}
 
 
-def view_filter(module: str, fps: int, scale: int = 1, video: bool = True) -> tuple[str, str]:
+def view_filter(module: str, fps: int, scale: int = 1, video: bool = True, full: bool = False) -> tuple[str, str]:
     """The ffmpeg filter that makes the app's square from a video or the Mac's camera, and a note
-    of what it emulates. scale 2: the detector's double size."""
+    of what it emulates. scale 2: the detector's double size. full (a video): the whole upright
+    frame at the scale whose square is VIEW * scale, for the detector; app_frame() cuts the square."""
     v = module_view(module)
     side = VIEW * scale
+    if video and full:
+        uw, uh = v["upright"]
+        k = side / v["crop"]
+        fw, fh = int(uw * k) // 2 * 2, int(uh * k) // 2 * 2
+        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
+              f"scale={fw}:{fh}:flags=area")
+        return vf, f"upright {uw} x {uh} to the detector, square {v['crop']} x {v['crop']} on the screen"
     if video:
         uw, uh = v["upright"]
         c = v["crop"]
@@ -269,10 +277,10 @@ class StubBoxes:
 # ------------------------------------------------------------------ the camera --
 
 def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 1,
-                  module: str = "v1.4") -> subprocess.Popen:
+                  module: str = "v1.4", full: bool = False) -> subprocess.Popen:
     """Frames of the module's square (view_filter); scale 2 gives the detector twice the size
     (app_frame() makes the app's)."""
-    vf, _ = view_filter(module, fps, scale, video=bool(video))
+    vf, _ = view_filter(module, fps, scale, video=bool(video), full=full)
     # A video file instead of the camera: in real time, looped, its sound left to chakra_feed.py.
     src = ["-re", "-stream_loop", "-1", "-i", video, "-an"] if video else \
         ["-f", "avfoundation", "-framerate", "30", "-i", f"{device}:none"]
@@ -281,12 +289,34 @@ def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 
 
 
 def app_frame(jpeg: bytes) -> bytes:
-    """The view's exact W x H from a bigger frame of the same crop."""
+    """The view's exact W x H from a bigger frame: the same square, or the whole upright frame
+    (then its centre square, as the board shows it)."""
     from io import BytesIO
     from PIL import Image
+    img = Image.open(BytesIO(jpeg)).convert("RGB")
+    if img.height > img.width:
+        top = (img.height - img.width) // 2
+        img = img.crop((0, top, img.width, top + img.width))
     out = BytesIO()
-    Image.open(BytesIO(jpeg)).convert("RGB").resize((W, H), Image.LANCZOS).save(out, "JPEG", quality=85)
+    img.resize((W, H), Image.LANCZOS).save(out, "JPEG", quality=85)
     return out.getvalue()
+
+
+def to_view(boxes, upright: tuple[int, int]):
+    """Boxes found in the whole upright frame (normalised to it) moved into the centre square the
+    screen shows: x stays, y is shifted and stretched; a box less than a third inside is dropped."""
+    if boxes is None:
+        return None
+    uw, uh = upright
+    top, side = (uh - uw) / 2 / uh, uw / uh  # the square's top and height, as shares of the frame
+    out = []
+    for b in boxes:
+        y0, y1 = (b[2] - top) / side, (b[2] + b[4] - top) / side
+        c0, c1 = max(0.0, y0), min(1.0, y1)
+        if c1 <= c0 or (c1 - c0) < (y1 - y0) / 3:
+            continue
+        out.append((b[0], b[1], c0, b[3], c1 - c0, *b[5:]))
+    return out
 
 
 def jpeg_frames(proc: subprocess.Popen):
@@ -370,13 +400,18 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
         # OWL-ViT found the bowls at 0.05 in the former 368 x 276 view and at 0.2 to 0.4 in twice that
         # (25.10.2026, the owner's video): the detector gets the double size, the app its own.
         big = isinstance(stub, Detector)
-        proc = ffmpeg_camera(device, fps, video, 2 if big else 1, module)
+        # With a video the detector sees the whole upright frame, the screen only its centre square:
+        # the square cuts the ends of a row of bowls (25.10.2026, the player's end of IMG_2144).
+        full = big and bool(video)
+        proc = ffmpeg_camera(device, fps, video, 2 if big else 1, module, full)
         print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps, "
               f"module {module}: {view_filter(module, fps, video=bool(video))[1]}", flush=True)
         n = 0
         for jpeg in jpeg_frames(proc):
             n += 1
             boxes = stub.boxes(jpeg, app.heard) if big else stub.boxes() if stub else None
+            if full:
+                boxes = to_view(boxes, module_view(module)["upright"])
             send_frame(app, files, app_frame(jpeg) if big else jpeg, boxes)
             if app.closed or not app.on or app.fps != fps:
                 break

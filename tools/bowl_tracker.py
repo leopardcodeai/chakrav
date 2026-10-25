@@ -51,6 +51,7 @@ CONFIRM = 2         # detections before a track is shown
 SEEN_OF = 8         # the percent on a mark: found in how many of the last 8 detections
 ONSET_FRAMES = 3    # how far back a moving bowl counts for a new tone
 VOTES_NEEDED = 2
+ROW_GAP = 2.5       # a bowl this many median gaps beyond the row's end is not part of the set
 ROW_CORR = 0.8      # how clearly the notes must rise (or fall) along the row before all bowls are named
 MAX_MARKS = 7       # the owner plays 7 chakra bowls; the app draws CHAKRA_BOXES of them
 SHOW_STEADY = 0.25  # a track found in fewer than a quarter of the last detections is no longer drawn
@@ -139,8 +140,19 @@ class Tracker:
         if len(best) < 3:
             return []
         ux, uy = axis if axis[1] < 0 else (-axis[0], -axis[1])  # pointing up the picture
-        return sorted((bowls[k] for k in best),
-                      key=lambda t: (t.box[0] + t.box[2] / 2) * ux + (t.box[1] + t.box[3] / 2) * uy)
+        row = sorted((bowls[k] for k in best),
+                     key=lambda t: (t.box[0] + t.box[2] / 2) * ux + (t.box[1] + t.box[3] / 2) * uy)
+        # A set stands close together: something further along the same line (a bowl on a shelf in
+        # the back, 25.10.2026) is cut off where the gap is far wider than the row's own gaps.
+        pos = [(t.box[0] + t.box[2] / 2) * ux + (t.box[1] + t.box[3] / 2) * uy for t in row]
+        gaps = [b - a for a, b in zip(pos, pos[1:])]
+        if len(gaps) >= 3:
+            mid = sorted(gaps)[len(gaps) // 2]
+            while len(row) > 3 and gaps and gaps[-1] > ROW_GAP * mid:
+                row, gaps = row[:-1], gaps[:-1]
+            while len(row) > 3 and gaps and gaps[0] > ROW_GAP * mid:
+                row, gaps = row[1:], gaps[1:]
+        return row
 
     def mallet_bowl(self):
         """The bowl the mallet head is on: of the boxes holding it, the one whose far rim (top edge) is nearest."""
@@ -230,7 +242,7 @@ class Tracker:
             self.learn_row(heard)
         self.heard = heard
         for t in shown:
-            if t.label in HIDDEN or t.steady < SHOW_STEADY:
+            if t.label in HIDDEN or (t.steady < SHOW_STEADY and t.chakra < 0):  # a named set's bowl stays put
                 continue
             played = 0
             if t.label not in PLAYERS:
@@ -240,7 +252,9 @@ class Tracker:
                 played = 1 if moving or touched or sounding else 0
             label = f"Bowl {NOTES[t.chakra]}" if t.label == "Singing bowl" and t.chakra >= 0 else t.label
             marks.append(((label, *[round(v, 3) for v in t.box], round(t.steady, 2), played), t.score))
-        marks.sort(key=lambda m: (-m[0][6], -m[0][5], -m[1]))
+        # The bowls of a named set first (played ones first among them), then the rest: a stray moving
+        # "tuning fork" at the player's feet must not push a set's bowl out of the app's 7 (25.10.2026).
+        marks.sort(key=lambda m: (not m[0][0].startswith("Bowl "), -m[0][6], -m[0][5], -m[1]))
         return [m[0] for m in marks[:MAX_MARKS]]
 
     def learn_row(self, k: int) -> None:

@@ -63,11 +63,14 @@ class MalletColour:
     hue, which is cheap enough for the ESP32-S31 too. Pixels of that hue that stay put (a red stripe on
     the mat) become background and do not count."""
     HUE_TOL, MIN_PX = 15.0, 4
+    MAX_SHARE = 0.02  # a head covers well under 2 % of the picture; more moving at once is no head
 
     def __init__(self, np):
         self.np = np
-        self.hue = None
+        self.hue = None       # the hue followed, once two mallet boxes agreed on it
+        self.candidate = None
         self.bg = None
+
 
     def hsv(self, img):
         np = self.np
@@ -86,7 +89,12 @@ class MalletColour:
             return  # a grey or wooden mallet: nothing to follow by colour
         rad = np.radians(hh[m])
         hue = float(np.degrees(np.arctan2(np.sin(rad).mean(), np.cos(rad).mean())) % 360)
-        self.hue = hue if self.hue is None else hue  # the newest mallet box decides
+        near = lambda a, b: abs((a - b + 180) % 360 - 180) < self.HUE_TOL
+        # Two mallet boxes must agree: the model's box sometimes sits on the mat (a blue stripe once).
+        if self.candidate is not None and near(hue, self.candidate):
+            if self.hue is None or not near(hue, self.hue):
+                self.hue, self.bg = hue, None  # a new hue: its background starts afresh
+        self.candidate = hue
 
     def find(self, img):
         """(x, y) of the head this frame, normalised, or None."""
@@ -98,8 +106,8 @@ class MalletColour:
         m = (d < self.HUE_TOL) & (s > 0.5) & (v > 0.3)
         self.bg = m.astype(np.float32) if self.bg is None or self.bg.shape != m.shape else 0.95 * self.bg + 0.05 * m
         m &= self.bg < 0.6  # what has been there for most of the last ~20 frames is background
-        if m.sum() < self.MIN_PX:
-            return None
+        if m.sum() < self.MIN_PX or m.mean() > self.MAX_SHARE:
+            return None  # nothing, or too much at once (the light changed): no head this frame
         ys, xs = np.nonzero(m)
         return float(xs.mean() / m.shape[1]), float(ys.mean() / m.shape[0])
 
