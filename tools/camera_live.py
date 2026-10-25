@@ -20,6 +20,7 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
                       chimes on a floor, moving gently): for screenshots and the launcher's demo
         --video FILE  a video file instead of the camera, looped in real time, for tests without a
                       camera (its sound goes to the app through chakra_feed.py wav FILE --loop)
+        --detect      real marks: each frame goes to tools/detect_owl.py (OWL-ViT, zero-shot, on the Mac)
         --demo-boxes  the stub detector: with --demo the drawn instruments' true boxes, over the
                       real camera plausible moving boxes that mark nothing real.
       Without --demo-boxes no boxes are sent: there is no detector yet, and the seen pill says so.
@@ -240,6 +241,27 @@ def frame_stats(jpeg: bytes) -> tuple[int, int]:
     return int(st.mean[0] + 0.5), int(st.stddev[0] + 0.5)
 
 
+class Detector:
+    """tools/detect_owl.py in the AI venv: a frame in, its instrument boxes out (OWL-ViT, zero-shot)."""
+    VENV = os.path.expanduser("~/Library/Application Support/LeopardCode/chakra/ai_venv_eat/bin/python")
+
+    def __init__(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        self.proc = subprocess.Popen([self.VENV, os.path.join(here, "detect_owl.py")], stdin=subprocess.PIPE,
+                                     stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
+    def boxes(self, jpeg: bytes):
+        import json
+        import struct
+        try:
+            self.proc.stdin.write(struct.pack(">I", len(jpeg)) + jpeg)
+            self.proc.stdin.flush()
+            line = self.proc.stdout.readline()
+            return [tuple(b) for b in json.loads(line)] if line else None
+        except (OSError, ValueError):
+            return None
+
+
 def cloud_key() -> bool:
     return any(os.environ.get(k, "").strip() for k in ("OPENAI_API_KEY", "GEMINI_API_KEY"))
 
@@ -269,7 +291,8 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
         n = 0
         for jpeg in jpeg_frames(proc):
             n += 1
-            send_frame(app, files, jpeg, stub.boxes() if stub else None)
+            boxes = stub.boxes(jpeg) if isinstance(stub, Detector) else stub.boxes() if stub else None
+            send_frame(app, files, jpeg, boxes)
             if app.closed or not app.on or app.fps != fps:
                 break
         proc.terminate()
@@ -310,6 +333,8 @@ def main():
                     "-list_devices true -i '')")
     ap.add_argument("--demo", action="store_true", help="a drawn scene instead of the camera")
     ap.add_argument("--video", metavar="FILE", help="a video file instead of the camera, looped in real time")
+    ap.add_argument("--detect", action="store_true",
+                    help="real instrument marks with OWL-ViT on the Mac (tools/detect_owl.py, the AI venv)")
     ap.add_argument("--demo-boxes", action="store_true",
                     help="stub boxes (no detector yet): the drawn scene's true ones, or drifting ones over the camera")
     ap.add_argument("--wait", action="store_true", help="retry for 2 min until the simulator listens")
@@ -336,7 +361,10 @@ def main():
         if a.demo:
             run_demo(app, files, a.demo_boxes)
         else:
-            run_camera(app, files, a.device, StubBoxes() if a.demo_boxes else None, a.video)
+            marks = Detector() if a.detect and os.path.exists(Detector.VENV) else StubBoxes() if a.demo_boxes else None
+            if a.detect and not isinstance(marks, Detector):
+                print("no AI venv: --detect needs ~/Library/Application Support/LeopardCode/chakra/ai_venv_eat", flush=True)
+            run_camera(app, files, a.device, marks, a.video)
     except KeyboardInterrupt:
         pass
     finally:
