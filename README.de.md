@@ -2,7 +2,7 @@
 
 **Chakra mit Video: die Klangschale hören, den Raum sehen, ihn in der Farbe des Chakras leuchten lassen.**
 
-ChakraV ist das experimentelle Geschwister von **[Chakra Detection](https://github.com/leopardcodeai/chakra-detection)**,
+ChakraV ist das experimentelle Geschwister von **[ChakraA (Chakra Detection)](https://github.com/leopardcodeai/chakra-detection)**, der Audio-App,
 für Espressifs [ESP-Mosaico](https://mosaico.espressif.com) (ESP32-S31, 2,16" Touchscreen 480 x 480, Mikrofon,
 Kamerasteckplatz). Chakra hört eine Klangschale und färbt den Raum. ChakraV nimmt eine Kamera dazu, um zu
 sehen, was möglich ist: ein breiter Rahmen um den Bildschirm leuchtet in der Farbe des gehörten Chakras, das
@@ -12,19 +12,19 @@ sie sieht. Englische Fassung (Quelle): [README.md](README.md).
 ## Welche App?
 
 Es gibt zwei Apps aus demselben Code. Im Yoga und in der Klangarbeit wollen viele Menschen gar keine KI oder
-nur KI, die im Raum bleibt: **[Chakra Detection](https://github.com/leopardcodeai/chakra-detection) ist dafür
+nur KI, die im Raum bleibt: **[ChakraA](https://github.com/leopardcodeai/chakra-detection) ist dafür
 gebaut.** Sie läuft ohne jede KI, ihre einzige KI-Funktion läuft lokal auf dem Gerät, und sie hat keine Kamera
 und keine Cloud. **ChakraV ist ausdrücklich die experimentelle**: sie probiert aus, was eine Kamera und größere
 Modelle bringen.
 
-| | [Chakra Detection](https://github.com/leopardcodeai/chakra-detection) | ChakraV (diese) |
+| | [ChakraA](https://github.com/leopardcodeai/chakra-detection) (Audio) | ChakraV (diese) |
 |---|---|---|
 | Hört | Mikrofon | Mikrofon und Kamera |
 | KI | keine nötig; ein optionaler lokaler KI-Klangfilter, nur auf dem Gerät | so viel auf dem Gerät, wie der ESP32-S31 schafft, dazu optional Cloud-Modelle mit eigenem API-Schlüssel |
 | Für | Räume ohne Kamera: die klassische, private Wahl | Experimente: was kann sie sehen und markieren? |
 | Reife | an echten Aufnahmen getestet | v0 |
 
-Wer keine Kamera braucht oder keine KI außerhalb des Geräts will, nimmt Chakra.
+Wer keine Kamera braucht oder keine KI außerhalb des Geräts will, nimmt ChakraA.
 
 **Das Licht ist in beiden gleich.** Leuchten, Anschlag-Kick, Überblendungen, Bildschirm-Lampe,
 Farbeinstellungen und jede Lampeneinstellung kommen aus demselben Kerncode (`chakra_core.c`: `animate()`,
@@ -40,7 +40,7 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 
 | Teil | Stand |
 |---|---|
-| Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in Chakra Detection (676670f) |
+| Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (676670f) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
 | Live-Kamerabild, Mac-Kamera, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`) |
 | Instrument-Boxen mit Beschriftung, bis zu 4 | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
