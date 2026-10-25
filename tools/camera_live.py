@@ -17,6 +17,8 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
       sends nothing in v0. The source line adds "cloud stub" when a key is there.
         --demo        a drawn scene instead of the camera (a singing bowl, a tuning fork and
                       chimes on a floor, moving gently): for screenshots and the launcher's demo
+        --video FILE  a video file instead of the camera, looped in real time, for tests without a
+                      camera (its sound goes to the app through chakra_feed.py wav FILE --loop)
         --demo-boxes  the stub detector: with --demo the drawn instruments' true boxes, over the
                       real camera plausible moving boxes that mark nothing real.
       Without --demo-boxes no boxes are sent: there is no detector yet, and the seen pill says so.
@@ -193,10 +195,12 @@ class StubBoxes:
 
 # ------------------------------------------------------------------ the camera --
 
-def ffmpeg_camera(device: str, fps: int) -> subprocess.Popen:
+def ffmpeg_camera(device: str, fps: int, video: str | None = None) -> subprocess.Popen:
     vf = f"fps={fps},scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}"
-    return subprocess.Popen(["ffmpeg", "-loglevel", "error", "-f", "avfoundation", "-framerate", "30",
-                             "-i", f"{device}:none", "-vf", vf, "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-"],
+    # A video file instead of the camera: in real time, looped, its sound left to chakra_feed.py.
+    src = ["-re", "-stream_loop", "-1", "-i", video, "-an"] if video else \
+        ["-f", "avfoundation", "-framerate", "30", "-i", f"{device}:none"]
+    return subprocess.Popen(["ffmpeg", "-loglevel", "error", *src, "-vf", vf, "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-"],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
@@ -232,7 +236,7 @@ def send_frame(app: App, files: FrameFile, jpeg: bytes, boxes) -> None:
     app.send(lines)
 
 
-def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None) -> None:
+def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, video: str | None = None) -> None:
     told = False
     while not app.closed:
         if not app.on:
@@ -241,8 +245,8 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None) 
             continue
         app.changed.clear()
         fps = app.fps
-        proc = ffmpeg_camera(device, fps)
-        print(f"camera open: {device}, {fps} fps", flush=True)
+        proc = ffmpeg_camera(device, fps, video)
+        print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps", flush=True)
         n = 0
         for jpeg in jpeg_frames(proc):
             n += 1
@@ -286,12 +290,15 @@ def main():
     ap.add_argument("--device", default=DEFAULT_DEVICE, help="the avfoundation camera by name (ffmpeg -f avfoundation "
                     "-list_devices true -i '')")
     ap.add_argument("--demo", action="store_true", help="a drawn scene instead of the camera")
+    ap.add_argument("--video", metavar="FILE", help="a video file instead of the camera, looped in real time")
     ap.add_argument("--demo-boxes", action="store_true",
                     help="stub boxes (no detector yet): the drawn scene's true ones, or drifting ones over the camera")
     ap.add_argument("--wait", action="store_true", help="retry for 2 min until the simulator listens")
     ap.add_argument("--dry-run", action="store_true", help="say what would happen, open nothing")
     a = ap.parse_args()
-    source = "Demo scene" if a.demo else "Mac camera"
+    source = "Demo scene" if a.demo else f"Video {os.path.basename(a.video)[:18]}" if a.video else "Mac camera"
+    if a.video and not os.path.exists(a.video):
+        sys.exit(f"no such video: {a.video}")
     if a.dry_run:
         what = ("a drawn demo scene" if a.demo else f"ffmpeg avfoundation '{a.device}' scaled to {W}x{H}") + \
             (" with stub boxes" if a.demo_boxes else ", no boxes")
@@ -308,7 +315,7 @@ def main():
         if a.demo:
             run_demo(app, files, a.demo_boxes)
         else:
-            run_camera(app, files, a.device, StubBoxes() if a.demo_boxes else None)
+            run_camera(app, files, a.device, StubBoxes() if a.demo_boxes else None, a.video)
     except KeyboardInterrupt:
         pass
     finally:

@@ -189,6 +189,7 @@ def main():
     ap.add_argument("--rounds", type=int, default=1)
     ap.add_argument("--light", help="a Home Assistant light entity to colour, e.g. light.wohnzimmer")
     ap.add_argument("--lamp", metavar="URL", help="a screen lamp page instead of a real lamp, e.g. http://127.0.0.1:3310")
+    ap.add_argument("--loop", action="store_true", help="wav: play the file again and again (a looped test video)")
     ap.add_argument("--ai", action="store_true", help="also run the AI sound gate (mic and wav only)")
     ap.add_argument("--port", type=int, default=int(os.environ.get("CHAKRA_FEED_PORT", "8710")))
     ap.add_argument("--ai-port", type=int, default=int(os.environ.get("CHAKRA_AI_PORT", "8711")),
@@ -229,7 +230,8 @@ def main():
             paced(sock, bowl(float(a.arg), a.seconds))
             paced(sock, silence(2.0))
         else:
-            src = ["-f", "avfoundation", "-i", ":0"] if a.mode == "mic" else ["-re", "-i", a.arg]
+            src = ["-f", "avfoundation", "-i", ":0"] if a.mode == "mic" else \
+                ["-re", *(["-stream_loop", "-1"] if a.loop else []), "-i", a.arg, "-vn"]
             gate = start_gate(a.ai_port) if a.ai else None
             halving = gate is not None  # the rate stays what ffmpeg was started with, even if the gate dies
             proc = ffmpeg(src, AI_RATE if halving else RATE)
