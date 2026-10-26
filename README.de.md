@@ -51,7 +51,7 @@ Bildschirm-Lampe und jede Lampeneinstellung kommen aus demselben Kerncode (`chak
 `chakra_light.c`), und eine Änderung daran wird in beiden gemacht. Sicher macht das Licht die Rate: ein Kick zählt als Blitz, wie klein er auch ist (ein roter nach
 WCAG, und eine Raumlampe füllt das Blickfeld), deshalb kommt er höchstens alle 2 s, weit unter 3 pro
 Sekunde; an echten Lampen ist das nicht gemessen. Wie gut das Hören funktioniert, misst die
-Auswertung von ChakraA: 83 % der Anschläge richtig in Flow und 87 % in Strike über 70 Anschläge, 0,29 s und
+Auswertung von ChakraA: 87 % der Anschläge richtig in Flow und 90 % in Strike über 70 Anschläge, 0,29 s und
 0,03 s vom Anschlag zur Farbe.
 
 ![Von der Klangschale zur Farbe des Raums (Schaubild englisch)](docs/how-it-works.png)

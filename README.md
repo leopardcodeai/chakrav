@@ -49,7 +49,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 setting come from the same core code (`chakra_core.c`, `chakra_light.c`), and a change to them is made in
 both. Flash safety comes from the rate: a kick counts as a flash however small (a red one under WCAG,
 and a room lamp fills the field of view), so it comes at most once every 2 s, far under 3 a second;
-compliance on real lamps is not measured. How well the hearing works is measured in ChakraA's evaluation: 83 % of strikes right in Flow and 87 %
+compliance on real lamps is not measured. How well the hearing works is measured in ChakraA's evaluation: 87 % of strikes right in Flow and 90 %
 in Strike over 70 strikes, 0.29 s and 0.03 s from strike to colour.
 
 ![From a singing bowl to the colour of the room](docs/how-it-works.png)
@@ -186,7 +186,7 @@ the picture onto the wall; here the frame extends the sound into the room),
 
 | Part | File |
 |---|---|
-| Detection: FFT, harmonics, steadiness, strikes (spectral flux), mappings | `components/app_chakra/chakra_detect.c` |
+| Detection: FFT, harmonics, bowl overtones, steadiness, strikes (SuperFlux), mappings | `components/app_chakra/chakra_detect.c` |
 | Screen: frame, camera view, boxes, pills, settings | `components/app_chakra/chakra_core.c`, `ui/make_scene.py` |
 | Light: kick, gong swell, the gate's colour rule, lamp pace | `components/app_chakra/chakra_light.c`, `tests/test_light.c` |
 | Board: microphone, Wi-Fi, lamps, settings (NVS key `chakrav`, version 6) | `main/main.c` |
