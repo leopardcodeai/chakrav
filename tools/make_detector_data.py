@@ -76,19 +76,22 @@ def frames(path: Path, step: float):
                              f"fps=1/{step:g},scale='if(gt(iw,ih),{LONG_SIDE},-2)':'if(gt(iw,ih),-2,{LONG_SIDE})',format=yuvj420p",
                              "-q:v", "3", "-f", "image2pipe", "-vcodec", "mjpeg", "-"], stdout=subprocess.PIPE)
     buf, i = b"", 0
-    while True:
-        chunk = proc.stdout.read(65536)
-        if not chunk:
-            break
-        buf += chunk
+    try:
         while True:
-            a = buf.find(b"\xff\xd8")
-            b = buf.find(b"\xff\xd9", a + 2) if a >= 0 else -1
-            if a < 0 or b < 0:
+            chunk = proc.stdout.read(65536)
+            if not chunk:
                 break
-            yield i * step, Image.open(BytesIO(buf[a:b + 2])).convert("RGB")
-            buf, i = buf[b + 2:], i + 1
-    proc.wait()
+            buf += chunk
+            while True:
+                a = buf.find(b"\xff\xd8")
+                b = buf.find(b"\xff\xd9", a + 2) if a >= 0 else -1
+                if a < 0 or b < 0:
+                    break
+                yield i * step, Image.open(BytesIO(buf[a:b + 2])).convert("RGB")
+                buf, i = buf[b + 2:], i + 1
+    finally:
+        proc.kill()  # stopped early at --max-per-video: end ffmpeg quietly instead of a broken pipe
+        proc.wait()
 
 
 def main():
