@@ -279,6 +279,12 @@ What a reviewer would ask for:
 | 4 | **Gate: owner-bowl prototypes and strike-aligned windows, threshold from a curve** | win back the bowls the gate drops (91 to 84 % on Commons, 69 to 63 % on own segments) while keeping gongs and voices out; the prototype doubles as an "is this one of my bowls" check for the camera rescue rule | 1 day on the Mac (embeddings exist); on the board the ESP-DL enrol-and-match pattern |
 | 5 | **Bowl-aware candidate scoring and a SuperFlux-style flux** for the Notes and Solfeggio mappings: bowl-mode template (1, 2.5 to 3.1, 5.0 to 5.7) beside the harmonic one; maximum filter over frequency and log bands in the flux | better confidence for bowls with low mode ratios (bells: 43 % colour share in Flow), fewer onsets from beating; helps users who never learn their bowls | a few hours in C and a rerun; host tests exist |
 
+**Status 26.10.2026.** Change 5 is in both apps (ChakraA 6b34ca8, ChakraV 02ca726), each half behind its
+own flag: strikes right went from 83 to 87 % in Flow and 87 to 90 % in Strike (70 strikes), the
+hand-marked own rounds from 13 to 14 of 14, latency unchanged; bells gained only 1 to 2 points. The
+log-spaced bands were tried and left out: they found 54 to 66 of the 70 strikes against 67 with linear
+bins, because they flatten the mallet's broadband attack. Change 3 is running (detector round 2).
+
 Not ranked, but do before the blog: correct the "under the WCAG flash line" wording (section 4), and run
 `review` on the AGPL question for the detector weights (DETECTOR_CHOICE.md), as the rules require for legal
 paths.
