@@ -65,7 +65,7 @@ HIDDEN = {"Hand"} | BLOCKERS  # helpers, never drawn
 PLAYER_MOVE = 5.0   # a hand or mallet box must change this much (0..255) to count as playing
 TOUCH = 0.15        # a player covering this share of a bowl touches it (the bowl it covers most)
 DUPLICATE = 0.75    # two tracks of one label whose overlap covers this share of the smaller are one
-INSTRUMENTS = {"Singing bowl", "Gong", "Drum", "Tuning fork", "Chimes", "Rainstick"}
+INSTRUMENTS = {"Singing bowl", "Gong", "Drum", "Tuning fork", "Chimes", "Rainstick", "Rattle"}
 
 
 def inter(a, b) -> float:

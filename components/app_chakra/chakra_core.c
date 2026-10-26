@@ -62,7 +62,8 @@ static const char *const TEXT[2][S_COUNT] = {
  * bowl whose note the tracker learned) as it came, in German "Schale C". */
 static const char *const LABELS[][3] = {
     {"Singing bowl", "Bowl", "Schale"}, {"Bowl", "Bowl", "Schale"}, {"Tuning fork", "Tuning fork", "Stimmgabel"},
-    {"Drum", "Drum", "Trommel"}, {"Chimes", "Chimes", "Klangspiel"},
+    {"Drum", "Drum", "Trommel"}, {"Chimes", "Chimes", "Klangspiel"}, {"Rainstick", "Rainstick", "Regenstab"},
+    {"Rattle", "Rattle", "Rassel"}, {"Mallet", "Mallet", "Schlägel"}, {"Gong", "Gong", "Gong"},
 };
 
 /* Apple's dark-mode indicator colours (DESIGN.md): green for the camera side, orange for the microphone. */

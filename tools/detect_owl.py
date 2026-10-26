@@ -44,11 +44,13 @@ from pathlib import Path
 SHOW = {"a metal singing bowl": "Singing bowl", "a white crystal singing bowl": "Singing bowl",
         "a singing bowl held in a hand": "Singing bowl", "a large gong hanging in a frame": "Gong", "a hand drum": "Drum",
         "a felt mallet": "Mallet", "a tuning fork": "Tuning fork", "wind chimes": "Chimes", "a rainstick": "Rainstick",
+        "a long bamboo rainstick": "Rainstick", "a rattle shaker": "Rattle", "a seed pod rattle": "Rattle",
         "a human hand": "Hand", "a bare foot": "Foot", "a human leg": "Leg", "a person's head": "Head"}
 LABELS = list(SHOW)
 # Zero-shot is weak on the rarer instruments: a leg came out as a rainstick and a mallet's handle as a
 # tuning fork at 0.10 to 0.18 (25.10.2026, OWLv2), real bowls at 0.3 to 0.44. These need more.
-MIN_SCORE = {"Rainstick": 0.2, "Tuning fork": 0.2, "Drum": 0.2, "Chimes": 0.2, "Gong": 0.15}
+MIN_SCORE = {"Rattle": 0.2, "Rainstick": 0.2, "Tuning fork": 0.2, "Drum": 0.2, "Chimes": 0.2, "Gong": 0.15}
+MALLET_MAX = 0.33  # a "mallet" longer than a third of the picture is a rainstick
 THRESHOLD, FIND_BOXES = 0.10, 16  # up to 16 found (helpers included); the tracker keeps them, the app draws 7
 MODELS = {"owlv2": "google/owlv2-base-patch16-ensemble", "owlvit": "google/owlvit-base-patch32"}
 
@@ -189,6 +191,8 @@ def main():
                 continue
             b = (x0 / img.width, y0 / img.height, (x1 - x0) / img.width, (y1 - y0) / img.height)
             label = SHOW[LABELS[lab]]
+            if label == "Mallet" and max(b[2], b[3]) > MALLET_MAX:
+                label = "Rainstick"  # a mallet is short; a long stick is a rainstick (owner 26.10.2026)
             if score < MIN_SCORE.get(label, THRESHOLD):
                 continue
             if any(o[0] == label and iou(b, o[1:5]) > 0.5 for o in boxes):
