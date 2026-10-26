@@ -49,6 +49,8 @@ LEAD = 0.8
 SPIKE, SPIKE_MIN = 2.5, 5.0  # ... or 2.5 times the box's usual motion and over 5: a stick struck gently
 QUIET_EMA = 0.1              # (a YouTube tune-up, 26.10.2026: strikes moved a big bowl's box by 4 to 8)          # ... and only for the box that moves most, or nearly as much
 EMA = 0.3           # how fast a box follows a new detection
+EMA_MOVED = 0.8     # ... and when it moved (a bowl lifted into the hands, 26.10.2026)
+FOLLOW = 0.8        # a detection this close (times the box's size) to a track of its label is that track moved
 CONFIRM = 2         # detections before a track is shown
 SEEN_OF = 8         # the percent on a mark: found in how many of the last 8 detections
 ONSET_FRAMES = 3    # how far back a moving bowl counts for a new tone
@@ -101,7 +103,8 @@ class Track:
 
     def update(self, label: str, box, score: float) -> None:
         self.labels[label] = self.labels.get(label, 0) + 1
-        self.box = [o + EMA * (n - o) for o, n in zip(self.box, box)]
+        k = EMA if iou(box, self.box) >= 0.5 else EMA_MOVED  # lifted or moved: follow quickly
+        self.box = [o + k * (n - o) for o, n in zip(self.box, box)]
         self.score += EMA * (score - self.score)
         self.hits, self.missed = self.hits + 1, 0
         self.found = (self.found + [1])[-SEEN_OF:]
@@ -175,6 +178,8 @@ class Tracker:
             return True
         if not any(t.hits >= CONFIRM for t in self.tracks) or any(t.label in PLAYERS for t in self.tracks):
             return True
+        if any(t.motion[-1] > MOTION for t in self.tracks) or self.mallet:
+            return True  # something is being moved or played: look every frame, a lifted bowl must follow
         return self.frame % REDETECT == 0
 
     def detections(self, found) -> None:
@@ -191,6 +196,20 @@ class Tracker:
                 v = iou(box, t.box)
                 if v >= best_iou:
                     best, best_iou = i, v
+            if best is None and label not in PLAYERS:
+                # Moved rather than new: the nearest track of its kind whose size fits, within FOLLOW sizes.
+                cx, cy = box[0] + box[2] / 2, box[1] + box[3] / 2
+                near = []
+                for i, t in enumerate(self.tracks):
+                    if i in used or t.label in PLAYERS or t.label != label:
+                        continue
+                    size = max(t.box[2], t.box[3])
+                    ratio = (box[2] * box[3]) / (t.box[2] * t.box[3] + 1e-9)
+                    d = ((t.box[0] + t.box[2] / 2 - cx) ** 2 + (t.box[1] + t.box[3] / 2 - cy) ** 2) ** 0.5
+                    if d < FOLLOW * size and 0.4 < ratio < 2.5:
+                        near.append((d, i))
+                if near:
+                    best = min(near)[1]
             if best is None:
                 self.tracks.append(Track(label, box, score))
                 used.add(len(self.tracks) - 1)
@@ -251,6 +270,12 @@ class Tracker:
             self.vote(heard)  # after this frame's touches: the hand on the bowl as the tone starts
             self.learn_row(heard)
         self.heard = heard
+        # One bowl per note: the track with the most votes for it keeps the name (two were "Bowl G", 26.10.2026).
+        owner = {}
+        for t in shown:
+            k = t.chakra
+            if k >= 0 and (k not in owner or t.votes[k] > owner[k].votes[k]):
+                owner[k] = t
         for t in shown:
             if t.label in HIDDEN or (t.steady < SHOW_STEADY and t.chakra < 0):  # a named set's bowl stays put
                 continue
@@ -260,10 +285,15 @@ class Tracker:
                 touched = id(t) in touched_ids
                 sounding = t.chakra >= 0 and t.chakra == heard
                 played = 1 if moving or touched or sounding else 0
-            label = f"Bowl {NOTES[t.chakra]}" if t.label == "Singing bowl" and t.chakra >= 0 else t.label
+            named = t.label == "Singing bowl" and t.chakra >= 0 and owner.get(t.chakra) is t
+            label = f"Bowl {NOTES[t.chakra]}" if named else t.label
             marks.append(((label, *[round(v, 3) for v in t.box], round(t.steady, 2), played), t.score))
         # The bowls of a named set first (played ones first among them), then the rest: a stray moving
         # "tuning fork" at the player's feet must not push a set's bowl out of the app's 7 (25.10.2026).
+        if self.mallet and not players:
+            # The mallet's head by its colour (detect_owl): drawn where the model did not find a mallet box.
+            x, y = self.mallet
+            marks.append((("Mallet", round(max(0.0, x - 0.04), 3), round(max(0.0, y - 0.04), 3), 0.08, 0.08, 1.0, 0), 0.0))
         marks.sort(key=lambda m: (not m[0][0].startswith("Bowl "), -m[0][6], -m[0][5], -m[1]))
         return [m[0] for m in marks[:MAX_MARKS]]
 
@@ -374,6 +404,14 @@ def self_test() -> None:
     m = tr.step([0.0] * len(tr.tracks), -1)
     names = {round(x[2], 2): x[0] for x in m}
     assert tr.direction == 1 and names[0.8] == "Bowl C" and names[0.2] == "Bowl B", (tr.direction, names)
+    tr = Tracker()  # a bowl lifted: found 0.12 up and to the side, it must follow, not stay and double
+    for _ in range(3):
+        tr.detections([("Singing bowl", 0.40, 0.50, 0.16, 0.12, 0.3)])
+        tr.step([0.0], -1)
+    for _ in range(2):
+        tr.detections([("Singing bowl", 0.46, 0.40, 0.16, 0.12, 0.3)])
+        m = tr.step([20.0] * len(tr.tracks), -1)
+    assert len(tr.tracks) == 1 and abs(tr.tracks[0].box[1] - 0.40) < 0.02, [t.box for t in tr.tracks]
     print("self-test ok")
 
 

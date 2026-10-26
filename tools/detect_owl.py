@@ -37,10 +37,12 @@ import threading
 from pathlib import Path
 
 # Prompts as phrases: "gong" alone pulled every metal bowl (25.10.2026, the owner's chakra bowls).
+# A bowl lifted into the hands is half hidden and tilted: its own words too (26.10.2026).
 # Crystal bowls need their own words: "a metal singing bowl" found one of seven (26.10.2026, YouTube).
 # Hand, foot, leg and head are helpers for the tracker: a hand plays a bowl, a foot, a leg or a head is no bowl
 # (a leg was taken for a rainstick, 25.10.2026).
-SHOW = {"a metal singing bowl": "Singing bowl", "a white crystal singing bowl": "Singing bowl", "a large gong hanging in a frame": "Gong", "a hand drum": "Drum",
+SHOW = {"a metal singing bowl": "Singing bowl", "a white crystal singing bowl": "Singing bowl",
+        "a singing bowl held in a hand": "Singing bowl", "a large gong hanging in a frame": "Gong", "a hand drum": "Drum",
         "a felt mallet": "Mallet", "a tuning fork": "Tuning fork", "wind chimes": "Chimes", "a rainstick": "Rainstick",
         "a human hand": "Hand", "a bare foot": "Foot", "a human leg": "Leg", "a person's head": "Head"}
 LABELS = list(SHOW)
