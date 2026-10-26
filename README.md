@@ -204,6 +204,7 @@ Design references (25.10.2026):
 | Screenshots; brightness, contrast, change and the light's Auto over a video | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
 | Instruments on the Mac: OWLv2 in a thread, the tracker (bowls stay, played marks, a row named by its notes) | `tools/detect_owl.py`, `tools/bowl_tracker.py` |
 | Training frames for an own detector, boxes proposed by OWLv2, review sheets (private, never committed) | `tools/make_detector_data.py` |
+| The best 16:9 window of a video before it is streamed (most instruments inside, cached per video) | `tools/best_crop.py` |
 
 The internal names stay `app_chakra` and `gsp_chakra_*`, as in the chakra app.
 

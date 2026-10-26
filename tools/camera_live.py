@@ -93,6 +93,22 @@ MAC_SIZE, MAC_HFOV = (1920, 1080), 70.0  # the Mac's picture; its field of view 
 
 
 MOUNT = "landscape"  # --mount; main() sets it
+CROP_AT = (0.5, 0.5)  # where a video's window sits, 0 left/top to 1 right/bottom; best_crop.py finds it
+
+
+def best_crop(video: str) -> tuple[float, float]:
+    """The window of a video that holds the most instruments (tools/best_crop.py, OWLv2 in the AI venv,
+    cached per video). Owner 26.10.2026: "nimm bei den Videos immer den besten Videoausschnitt"."""
+    import json
+    here = os.path.dirname(os.path.abspath(__file__))
+    if not os.path.exists(Detector.VENV):
+        return 0.5, 0.5
+    r = subprocess.run([Detector.VENV, os.path.join(here, "best_crop.py"), video], capture_output=True, text=True)
+    try:
+        d = json.loads(r.stdout.strip().splitlines()[-1])
+        return float(d["fx"]), float(d["fy"])
+    except (ValueError, IndexError, KeyError):
+        return 0.5, 0.5
 
 
 def view_crop(uw: int, uh: int) -> tuple[float, float, int] | None:
@@ -134,11 +150,11 @@ def view_filter(module: str, fps: int, scale: int = 1, video: bool = True, full:
     band = f"{cw:.0f} x {ch:.0f} at {v['step']}/16, about {dw:.0f} x {dh:.0f} deg"
     if video and full:
         fw, fh = int(uw * DETECT_K) // 2 * 2, int(uh * DETECT_K) // 2 * 2
-        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
+        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh}:'(iw-ow)*{CROP_AT[0]}':'(ih-oh)*{CROP_AT[1]}',"
               f"scale={fw}:{fh}:flags=area")
         return vf, f"upright {uw} x {uh} to the detector at {fw} x {fh}, the view {band}"
     if video:
-        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
+        vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh}:'(iw-ow)*{CROP_AT[0]}':'(ih-oh)*{CROP_AT[1]}',"
               f"crop={round(cw)}:{round(ch)},scale={W * scale}:{H * scale}:flags=area")
         return vf, f"upright {uw} x {uh}, the view {band}"
     # The share of the Mac's 16:9 picture that holds the view's angle; as an ffmpeg expression, so it
@@ -502,6 +518,10 @@ def main():
     a = ap.parse_args()
     global MOUNT
     MOUNT = a.mount
+    if a.video:
+        global CROP_AT
+        CROP_AT = best_crop(a.video)
+        print(f"best window of the video: x {CROP_AT[0]:.2f}, y {CROP_AT[1]:.2f}", flush=True)
     mod = MODULES[a.module]
     emulated = f"{mod['sensor']} {a.module} emulated"
     # The source line names what the board would have: the module, emulated from a video or the Mac.
