@@ -20,8 +20,9 @@
 //   height 0: each sensor's Kconfig default, sdkconfig.defaults), which the BSP chose after reading
 //   the sensor's PID (it logs "Camera opened: sensor=SC101IOT pid=0xDA4A"). The slot EEPROM
 //   (24C02 at 0x50) is logged too: its hw_version for V1.2 and V1.4 is not documented.
-//   Both mount sideways: the upright picture is portrait, and the 720 x 720 centre square is all of
-//   V1.4's short side (about 42 x 42 degrees) and the centre 720 of V1.2's 768.
+//   Mounted for landscape (CHAKRA_CAM_LANDSCAPE, default) the picture stays 1280 x 720; sideways it is
+//   turned to portrait. Either way the 720 x 720 centre square is all of V1.4's short side (about 42 x 42
+//   degrees) and the centre 720 of V1.2's 768.
 //
 // Flash: two LEDs on GPIO34, LOW = on, through a high-side P-MOS. The BSP drives GPIO34 as an
 // open-drain output, presets it high (off) before configuring it and disables its sleep select,
@@ -62,6 +63,13 @@
 #include "mosaico_module_mgr.h"
 
 #define CROP 720                 // the upright square the view is made from (720 x 6/16 = 270)
+/* How the module is mounted (owner 26.10.2026: "Querformat, die Kamera kann seitlich angeordnet werden").
+ * 1: landscape, the sensor's 1280 x 720 stays upright (73 x 42 degrees on V1.4); 0: sideways as the camera
+ * kit's preview, turned 270 degrees to a portrait picture. The square view is the centre 720 x 720 either
+ * way. CHECK ON THE BOARD: which flip the landscape mount needs (the sensor may read out mirrored). */
+#ifndef CHAKRA_CAM_LANDSCAPE
+#define CHAKRA_CAM_LANDSCAPE 1
+#endif
 #define JPEG_SLOTS 3             // writing, newest, being read
 #define JPEG_MAX (96 * 1024)     // a 270 x 270 frame at quality 80 is about 15 to 30 KB
 #define JPEG_QUALITY 80
@@ -272,10 +280,11 @@ static esp_err_t take_frame(pipeline_t *p)
                .yuv_std = PPA_COLOR_CONV_STD_RGB_YUV_BT601},
         .out = {.buffer = p->rgb, .buffer_size = p->rgb_size, .pic_w = CHAKRA_CAM_W, .pic_h = CHAKRA_CAM_H,
                 .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
-        .rotation_angle = PPA_SRM_ROTATION_ANGLE_270,  // as camera_lcd_preview: upright, like the kit's screen
+        .rotation_angle = CHAKRA_CAM_LANDSCAPE ? PPA_SRM_ROTATION_ANGLE_0  // landscape: as it comes
+                                               : PPA_SRM_ROTATION_ANGLE_270,  // as camera_lcd_preview
         .scale_x = (float)CHAKRA_CAM_W / CROP,         // 6/16, exact in the PPA's 1/16 steps
         .scale_y = (float)CHAKRA_CAM_H / CROP,
-        .mirror_y = true,
+        .mirror_y = !CHAKRA_CAM_LANDSCAPE,  // the kit's preview mirrors after its turn
         .mode = PPA_TRANS_MODE_BLOCKING,
     };
     err = ppa_do_scale_rotate_mirror(p->ppa, &op);

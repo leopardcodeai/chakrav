@@ -26,7 +26,8 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
         --demo-boxes  the stub detector: with --demo the drawn instruments' true boxes, over the
                       real camera plausible moving boxes that mark nothing real.
         --module      v1.4 (default: the SC101IOT module the board is expected with) or v1.2
-                      (OV3640). The module sits sideways, so its upright picture is portrait:
+                      (OV3640). --mount landscape (default) keeps the module's frame upright as it comes,
+                      1280 x 720; --mount portrait turns it, as when the module sits sideways:
                       V1.4 720 x 1280 (9:16), V1.2 768 x 1024 (3:4). The app shows its centre
                       square, as the camera kit's preview does: 720 x 720 scaled to 270 (the board's
                       PPA scales in 1/16 steps, 720 x 6/16 = 270), the same 720 on V1.2. A --video
@@ -78,8 +79,9 @@ W, H = VIEW, VIEW
 CROP = 720        # the upright square the board scales to VIEW: 720 x 6/16 (main/camera.c)
 DEFAULT_DEVICE = "MacBook Pro Camera"
 # The ESP-Mosaico camera modules (Espressif user_guide_camera; apps/camera cam_twin.py MODULES).
-# raw: the sensor frame as it comes (landscape); the module is mounted sideways, so the upright
-# picture is raw turned: portrait. fov: the upright picture's short side in degrees.
+# raw: the sensor frame as it comes (landscape). The module can be mounted either way (owner 26.10.2026:
+# "Querformat, die Kamera kann seitlich angeordnet werden"): MOUNT "landscape" keeps the raw frame upright
+# (1280 x 720, 73 x 42 deg on V1.4), "portrait" turns it (720 x 1280). fov: the short side in degrees.
 MODULES = {
     "v1.4": {"sensor": "SC101IOT", "raw": (1280, 720), "fps": 15, "fov": 42.0},  # docs H 73 / V 42, 3.1 mm F1.8
     "v1.2": {"sensor": "OV3640", "raw": (1024, 768), "fps": 25, "fov": 44.1},    # docs 68 diagonal: 56.7 x 44.1
@@ -87,12 +89,16 @@ MODULES = {
 MAC_SIZE, MAC_HFOV = (1920, 1080), 70.0  # the Mac's picture; its field of view is an estimate (cam_twin.py)
 
 
+MOUNT = "landscape"  # --mount; main() sets it
+
+
 def module_view(module: str) -> dict:
     """What the module gives the app: the upright frame, the square taken from it, its angle."""
     m = MODULES[module]
-    uw, uh = m["raw"][1], m["raw"][0]  # upright: portrait
-    crop = min(CROP, uw)
-    t = math.tan(math.radians(m["fov"] / 2)) * crop / uw
+    uw, uh = m["raw"] if MOUNT == "landscape" else (m["raw"][1], m["raw"][0])
+    short = min(uw, uh)
+    crop = min(CROP, short)
+    t = math.tan(math.radians(m["fov"] / 2)) * crop / short
     return {**m, "module": module, "upright": (uw, uh), "crop": crop, "square_deg": math.degrees(2 * math.atan(t)),
             "tan": t}
 
@@ -294,9 +300,10 @@ def app_frame(jpeg: bytes) -> bytes:
     from io import BytesIO
     from PIL import Image
     img = Image.open(BytesIO(jpeg)).convert("RGB")
-    if img.height > img.width:
-        top = (img.height - img.width) // 2
-        img = img.crop((0, top, img.width, top + img.width))
+    if img.height != img.width:  # the centre square, of a portrait or a landscape frame
+        side = min(img.width, img.height)
+        left, top = (img.width - side) // 2, (img.height - side) // 2
+        img = img.crop((left, top, left + side, top + side))
     out = BytesIO()
     img.resize((W, H), Image.LANCZOS).save(out, "JPEG", quality=85)
     return out.getvalue()
@@ -304,18 +311,22 @@ def app_frame(jpeg: bytes) -> bytes:
 
 def to_view(boxes, upright: tuple[int, int]):
     """Boxes found in the whole upright frame (normalised to it) moved into the centre square the
-    screen shows: x stays, y is shifted and stretched; a box less than a third inside is dropped."""
+    screen shows, portrait or landscape: the long axis is shifted and stretched; a box less than a
+    third inside is dropped."""
     if boxes is None:
         return None
     uw, uh = upright
-    top, side = (uh - uw) / 2 / uh, uw / uh  # the square's top and height, as shares of the frame
+    side = min(uw, uh)
+    x0s, xs = (uw - side) / 2 / uw, side / uw  # the square's start and size, as shares of the frame
+    y0s, ys = (uh - side) / 2 / uh, side / uh
     out = []
     for b in boxes:
-        y0, y1 = (b[2] - top) / side, (b[2] + b[4] - top) / side
-        c0, c1 = max(0.0, y0), min(1.0, y1)
-        if c1 <= c0 or (c1 - c0) < (y1 - y0) / 3:
+        bx0, bx1 = (b[1] - x0s) / xs, (b[1] + b[3] - x0s) / xs
+        by0, by1 = (b[2] - y0s) / ys, (b[2] + b[4] - y0s) / ys
+        cx0, cx1, cy0, cy1 = max(0.0, bx0), min(1.0, bx1), max(0.0, by0), min(1.0, by1)
+        if cx1 <= cx0 or cy1 <= cy0 or (cx1 - cx0) * (cy1 - cy0) < (bx1 - bx0) * (by1 - by0) / 3:
             continue
-        out.append((b[0], b[1], c0, b[3], c1 - c0, *b[5:]))
+        out.append((b[0], cx0, cy0, cx1 - cx0, cy1 - cy0, *b[5:]))
     return out
 
 
@@ -459,9 +470,13 @@ def main():
                     help="stub boxes (no detector yet): the drawn scene's true ones, or drifting ones over the camera")
     ap.add_argument("--module", choices=sorted(MODULES), default="v1.4",
                     help="the camera module to emulate: v1.4 SC101IOT (default) or v1.2 OV3640")
+    ap.add_argument("--mount", choices=["landscape", "portrait"], default="landscape",
+                    help="how the module is mounted: landscape 1280 x 720 (default) or portrait 720 x 1280")
     ap.add_argument("--wait", action="store_true", help="retry for 2 min until the simulator listens")
     ap.add_argument("--dry-run", action="store_true", help="say what would happen, open nothing")
     a = ap.parse_args()
+    global MOUNT
+    MOUNT = a.mount
     mod = MODULES[a.module]
     emulated = f"{mod['sensor']} {a.module} emulated"
     # The source line names what the board would have: the module, emulated from a video or the Mac.
