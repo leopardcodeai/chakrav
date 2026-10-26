@@ -48,7 +48,9 @@ Kamerabild.
 
 **Das Licht ist in beiden Apps gleich.** Leuchten, Kick, Gong-Anschwellen, Überblendungen,
 Bildschirm-Lampe und jede Lampeneinstellung kommen aus demselben Kerncode (`chakra_core.c`,
-`chakra_light.c`), und eine Änderung daran wird in beiden gemacht. Wie gut das Hören funktioniert, misst die
+`chakra_light.c`), und eine Änderung daran wird in beiden gemacht. Sicher macht das Licht die Rate: ein Kick zählt als Blitz, wie klein er auch ist (ein roter nach
+WCAG, und eine Raumlampe füllt das Blickfeld), deshalb kommt er höchstens alle 2 s, weit unter 3 pro
+Sekunde; an echten Lampen ist das nicht gemessen. Wie gut das Hören funktioniert, misst die
 Auswertung von ChakraA: 83 % der Anschläge richtig in Flow und 87 % in Strike über 70 Anschläge, 0,29 s und
 0,03 s vom Anschlag zur Farbe.
 

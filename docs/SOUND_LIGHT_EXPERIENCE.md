@@ -22,7 +22,7 @@ document; every number marked "start value" is a proposal to measure, not a meas
 
 **Built on 26.10.2026** (owner: "ja"), in both apps (`components/app_chakra/chakra_light.c`, host test
 `tests/test_light.c`): 1 (one kick per 2 s, 8 points and 8 % white, largest luminance step 0.07 instead of
-0.34), 2 (gong swell +12 over 1.5 s, down over 7 s; the gate says "gong" through a second head,
+0.34; the rate is what keeps it safe, see 3.1), 2 (gong swell +12 over 1.5 s, down over 7 s; the gate says "gong" through a second head,
 `tools/bench/gong_head.py` in ChakraA), 5 (brightness 30 %, without the evening ceiling for blue) and 8 (two
 commands per kick or swell, network lamps at most 8 a second).
 
@@ -96,6 +96,13 @@ From `README.md` of both apps and `components/app_chakra/chakra_core.c`, `chakra
 - **For us:** a full kick (+40 points, 35 % towards white) is a general flash. Our Root red has
   R/(R+G+B) = 0.73, near the red-flash line; Hue lamps may render it more saturated. A TV used as the screen
   lamp fills far more than 25 % of the view: it is the strongest flash source in the room.
+- **What keeps us safe is the rate, not the size of the step** (correction of 26.10.2026, from
+  `APPROACH_REVIEW.md` section 4). WCAG's red flash has no luminance threshold: any pair of opposing
+  transitions involving a saturated red counts, so a kick on Root (or towards white from red) is a red flash
+  however small. And the 25 % area exemption is written for screens; room lamps and a TV as the screen lamp
+  fill the field of view, so it does not apply. Even the 8-point kick therefore counts as a flash. The
+  safety margin is that it comes at most once every 2 s, far under 3 a second. We have not measured
+  compliance with WCAG 2.3.1 on real lamps and claim none.
 - Rhythmic drumming in sound and shamanic work runs at about 220 beats a minute in Harner's core shamanism, a
   little under 4 Hz ([encyclopedia entry "Drums and drumming"](https://slovaronline.com/browse/b8a3e075-0594-30d0-8a04-5c6370b8c68c/drums-and-drumming)),
   and "theta drumming" is studied at 4 beats a second

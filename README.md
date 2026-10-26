@@ -47,7 +47,9 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 
 **The light is the same in both apps.** Glow, kick, gong swell, fades, the screen lamp and every lamp
 setting come from the same core code (`chakra_core.c`, `chakra_light.c`), and a change to them is made in
-both. How well the hearing works is measured in ChakraA's evaluation: 83 % of strikes right in Flow and 87 %
+both. Flash safety comes from the rate: a kick counts as a flash however small (a red one under WCAG,
+and a room lamp fills the field of view), so it comes at most once every 2 s, far under 3 a second;
+compliance on real lamps is not measured. How well the hearing works is measured in ChakraA's evaluation: 83 % of strikes right in Flow and 87 %
 in Strike over 70 strikes, 0.29 s and 0.03 s from strike to colour.
 
 ![From a singing bowl to the colour of the room](docs/how-it-works.png)
