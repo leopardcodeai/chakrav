@@ -20,6 +20,12 @@ document; every number marked "start value" is a proposal to measure, not a meas
 | 9 | **The screen lamp on a TV is the largest flash area in the room; give it the gentlest kick** (half the lamps' amount, or none). | 3.1 | Same kick as the device screen. |
 | 10 | **Measure it** with the eight numbers in section 7 (changes per minute, short-lived colours, wrong-colour share per instrument, time to colour, flashes per second, brightness step, lamp command rate, facilitator overrides). | 7 | `tests/analyse.sh` already gives the wrong-colour share per instrument. |
 
+**Built on 26.10.2026** (owner: "ja"), in both apps (`components/app_chakra/chakra_light.c`, host test
+`tests/test_light.c`): 1 (one kick per 2 s, 8 points and 8 % white, largest luminance step 0.07 instead of
+0.34), 2 (gong swell +12 over 1.5 s, down over 7 s; the gate says "gong" through a second head,
+`tools/bench/gong_head.py` in ChakraA), 5 (brightness 30 %, without the evening ceiling for blue) and 8 (two
+commands per kick or swell, network lamps at most 8 a second).
+
 ### Light per instrument class (start values)
 
 | Sound | Colour | Brightness | Lamps | Screen |
@@ -279,8 +285,9 @@ None of these recognises a bowl or a chakra note; that, and the calm defaults, i
 
 - Facilitator interviews: no published source rates colour-changing light during a journey; the phase values here
   are inference and need 3 real sessions.
-- Gate strike rate under sustained drumming: measure how many strikes `ai_gate.py` sends per second for a 4 Hz
-  frame drum before deciding the exact limiter.
+- Gate strike rate under sustained drumming: measured 26.10.2026 on two Commons drum recordings, 1.6 strikes a
+  second (a snare cadence, 60 s) and 2.5 (djembe, 13 s); the limiter takes one per 2 s whatever the rate.
+  A 4 Hz frame drum of our own is still to be recorded.
 - The Hue Entertainment API (DTLS) would allow synchronous kicks on Hue lamps; with swells instead of kicks it may
   never be needed.
 - Measure the evening level of the blue chakra colours on the real lamps before choosing their ceiling.

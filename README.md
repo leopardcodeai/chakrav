@@ -29,7 +29,7 @@ If you do not need the camera, or want no AI beyond the device, take ChakraA.
 
 **The light is the same in both.** Glow, strike kick, fades, the screen lamp, the colour settings and
 every lamp setting come from the same core code (`chakra_core.c`: `animate()`, `light()`, the colour and
-lamp pages), and a change to them is made in both apps.
+lamp pages; `chakra_light.c`: kick, gong swell, lamp pace), and a change to them is made in both apps.
 
 | Live view | Settings | Camera | Connections |
 |---|---|---|---|
@@ -43,6 +43,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 |---|---|
 | Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (1cbd13c): strikes are found by the spectral flux, so a loud ringing bowl no longer masks the next ones (7 of 7 strikes in a round where Flow showed Root alone before; 0.4 s in Flow, 0.1 s in Strike) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
+| Calm light (26.10.2026): brightness 30 % by default (60 % before; a stored setting stays); a strike kicks at most once every 2 s, 8 points and 8 % white, under the WCAG flash line, so a drum at 4 beats a second never flashes per beat; a gong never kicks: the lamps swell 12 points over 1.5 s and fall back over 7 s, the colour kept, the heard pill says "Gong"; two lamp commands per kick or swell, a Hue bridge or Home Assistant at most 8 a second | host tests (`tests/run.sh`: a 4 Hz drum gives 10 kicks in 20 s instead of 83, 20 lamp commands instead of 250); the gong head finds 45 % of Commons gongs and 33 % of our own (ChakraA `tools/bench/gong_head.py`), a missed gong gets the small kick |
 | Live camera view: a square like the camera kit's preview, 270 x 270, from the Mac camera or a video, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`, emulating the V1.4 or V1.2 module) |
 | Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
 | Heard pill (orange dot while it hears), seen pill (green dot while it sees) | work |
@@ -188,6 +189,7 @@ Design references (25.10.2026):
 |---|---|
 | Detection: FFT, harmonics, steadiness, strikes (spectral flux), mappings | `components/app_chakra/chakra_detect.c` |
 | Screen: frame, camera view, boxes, pills, settings, hold to close | `components/app_chakra/chakra_core.c`, scene `ui/make_scene.py` |
+| Light: strike kick (at most 1 per 2 s), gong swell, the AI gate's colour rule, lamp pace; its host test | `components/app_chakra/chakra_light.c`, `tests/test_light.c` |
 | Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 6) | `main/main.c` |
 | Board: the camera module, the square view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |
 | Simulator side and feeders | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |

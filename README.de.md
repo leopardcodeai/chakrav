@@ -30,7 +30,8 @@ Wer keine Kamera braucht oder keine KI außerhalb des Geräts will, nimmt Chakra
 
 **Das Licht ist in beiden gleich.** Leuchten, Anschlag-Kick, Überblendungen, Bildschirm-Lampe,
 Farbeinstellungen und jede Lampeneinstellung kommen aus demselben Kerncode (`chakra_core.c`: `animate()`,
-`light()`, die Farb- und Lampenseiten), und eine Änderung daran wird in beiden Apps gemacht.
+`light()`, die Farb- und Lampenseiten; `chakra_light.c`: Kick, Gong-Anschwellen, Lampentakt), und eine
+Änderung daran wird in beiden Apps gemacht.
 
 | Live-Ansicht | Einstellungen | Kamera | Anbindungen |
 |---|---|---|---|
@@ -44,6 +45,7 @@ Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --
 |---|---|
 | Chakra-Erkennung, Lampen, Bildschirm-Lampe, lokaler KI-Klangfilter | wie in ChakraA (1cbd13c): Anschläge werden am spektralen Fluss erkannt, eine laut nachklingende Schale überdeckt die nächsten nicht mehr (7 von 7 Anschlägen einer Runde, in der Flow vorher nur Wurzel zeigte; 0,4 s in Flow, 0,1 s in Strike) |
 | Rahmen in der Chakra-Farbe, mit Überblendung und Kick beim Anschlag | läuft im Simulator |
+| Ruhiges Licht (26.10.2026): Helligkeit ab Werk 30 % (vorher 60 %; eine gespeicherte Einstellung bleibt); ein Anschlag kickt höchstens einmal alle 2 s, 8 Punkte und 8 % Richtung Weiß, unter der WCAG-Blitzgrenze, sodass eine Trommel mit 4 Schlägen je Sekunde nie im Takt blitzt; ein Gong kickt nie: die Lampen schwellen in 1,5 s um 12 Punkte an und in 7 s wieder ab, die Farbe bleibt, die Pille "gehört" sagt "Gong"; zwei Lampenbefehle je Kick oder Anschwellen, eine Hue-Bridge oder Home Assistant höchstens 8 je Sekunde | Host-Tests (`tests/run.sh`: eine Trommel mit 4 Hz gibt in 20 s 10 Kicks statt 83, 20 Lampenbefehle statt 250); der Gong-Kopf erkennt 45 % der Commons-Gongs und 33 % unserer eigenen (ChakraA `tools/bench/gong_head.py`), ein verpasster Gong bekommt den kleinen Kick |
 | Live-Kamerabild: ein Quadrat wie in der Vorschau des Kamera-Kits, 270 x 270, von der Mac-Kamera oder einem Video, 1, 2 oder 4 fps | läuft im Simulator (`tools/camera_live.py`, emuliert das Modul V1.4 oder V1.2) |
 | Instrument-Boxen mit kurzer Beschriftung ("Schale", "Schale C"), bis zu 7, eine je Chakra-Schale | die Darstellung läuft; die Boxen kommen von einem **Platzhalter** (`--demo-boxes`) |
 | Pille "gehört" (oranger Punkt, solange sie hört), Pille "gesehen" (grüner Punkt, solange sie sieht) | laufen |

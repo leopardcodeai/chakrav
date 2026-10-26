@@ -3710,7 +3710,7 @@
    "h": 22,
    "min": 10,
    "max": 100,
-   "value": 60,
+   "value": 30,
    "track_size": 8,
    "radius": 11,
    "bg_color": "#3A3744",

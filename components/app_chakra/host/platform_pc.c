@@ -13,7 +13,7 @@
 // bars\t<MIDI note of the first band>\t<18 values 0..100>\n (one band a semitone, chakra_core.h)
 // Line port (CHAKRA_AI_PORT, default 8711; up to LINE_CLIENTS at once: the AI sound gate through
 // chakra_feed.py --ai and the camera through tools/camera_live.py), in:
-//   sound\t<bowl|other|none>\t<strike 0|1>              the AI sound gate's verdict
+//   sound\t<bowl|other|gong|none>\t<strike 0|1>              the AI sound gate's verdict
 //   frame\t<path>[\t<luma>]                             a JPEG of CHAKRA_CAM_W x CHAKRA_CAM_H, read at once;
 //                                                        its mean luma 0..255 drives the light's Auto
 //   box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>[\t<played 0|1>]   a mark, normalised 0..1; a frame's boxes follow it
@@ -155,6 +155,7 @@ static void line_in(char *line)
     if (strcmp(f[0], "sound") == 0 && n >= 2) {
         const int k = strcmp(f[1], "bowl") == 0    ? CHAKRA_SOUND_BOWL
                       : strcmp(f[1], "other") == 0 ? CHAKRA_SOUND_OTHER
+                      : strcmp(f[1], "gong") == 0  ? CHAKRA_SOUND_GONG
                                                    : CHAKRA_SOUND_NONE;
         chakra_core_set_sound(host.core, k, n >= 3 ? atoi(f[2]) : 0);
     } else if (strcmp(f[0], "frame") == 0 && n >= 2) {
@@ -244,16 +245,16 @@ static void send_text(const char *line)
     }
 }
 
-static void on_light(int chakra, uint32_t rgb, int brightness, void *ctx)
+static void on_light(int chakra, uint32_t rgb, int brightness, int transition_ms, void *ctx)
 {
     (void)ctx;
     if (!(host.lamps & 0x03)) {
         return;  // neither the screen lamp (row 0) nor the feeder's Home Assistant lamp (row 1) is ticked
     }
     char line[64];
-    /* Lamps fade like the screen: Flow softly, Strike at once. */
+    /* The core's fade: Flow 1.5 s, Strike 0.1 s; a kick or gong swell is one line up and one down. */
     snprintf(line, sizeof(line), "light\t%d\t%06X\t%d\t%.1f\n", chakra, (unsigned)rgb, brightness,
-             host.reaction == CHAKRA_STRIKE ? 0.1 : 1.5);
+             transition_ms / 1000.0);
     fprintf(stderr, "chakrav: %s", line);
     send_text(line);
 }

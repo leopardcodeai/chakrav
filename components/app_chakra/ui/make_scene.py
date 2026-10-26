@@ -82,7 +82,7 @@ WAVE, EYE, CAMERA, CAMERA_OFF, CLOUD = 0xF147D, 0xF06D0, 0xF0100, 0xF05DF, 0xF01
 MIC, VIDEO, FLASH, MOVIE = 0xF036C, 0xF0567, 0xF0241, 0xF0381  # microphone, video, flash, movie (demo)
 ON, OFF = "#6E5ACF", "#3A3744"  # DESIGN.md: chosen, not chosen
 LAMPS = 4  # rows in the lamp list; chakra_core.h CHAKRA_LAMPS
-SLIDERS = [("bright", "Brightness", 10, 100, 60), ("hue", "Colour", 0, 359, 0), ("sens", "Sensitivity", 1, 10, 8),
+SLIDERS = [("bright", "Brightness", 10, 100, 30), ("hue", "Colour", 0, 359, 0), ("sens", "Sensitivity", 1, 10, 8),
            ("hold", "Afterglow", 5, 50, 15)]
 OPTIONS = [("map_notes", "Notes"), ("map_solf", "Solfeggio"), ("map_bowls", "Bowls"), ("lang_en", "EN"), ("lang_de", "DE")]
 
