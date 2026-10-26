@@ -4,7 +4,7 @@
 What: ChakraV is the chakra app with a camera. The whole screen is the light: a thick frame in the
       chakra's colour runs around the edge (FRAME px, fading softly into the dark panel inside it,
       faded and kicked by chakra_core.c). Inside the panel: the top bar (title, clock, dot, gear),
-      the live camera view in the centre, a square like the camera kit's preview, with up to seven
+      the live camera view in the centre, 16:9 like the camera module's frame, with up to seven
       instrument marks over it (a coloured box with a label pill each), and below it the chakra's name with the note and Hz, a "heard" pill
       (what the AI sound gate hears), a "seen" pill (what the boxes show) and a small spectrum (one
       band a semitone, the tone's octave and a little more) with the seven chakra dots under it.
@@ -21,16 +21,16 @@ Pitfalls:
   * ESP-GSP 1.5.1 rounds an image's background and border, not its pixels, and clip_children is
     rectangular: a ring in the panel's colour masks the camera's corners (DESIGN.md, Media).
   * The camera frame is a runtime JPEG (chakra_core_set_frame) of exactly CAM_W x CAM_H; one image
-    slot is reused. Decoded at 4 bytes a pixel it takes about 290 KB, so a frame and its pending
+    slot is reused. Decoded at 4 bytes a pixel it takes about 360 KB, so a frame and its pending
     replacement fit the 2 MB image cache with room to spare (the house doorbell's 448 x 336 did not).
-  * The view is square (owner 25.10.2026: "wie bei der Camera-Kit-Kamera"): the centre square of the
-    upright picture. The module sits sideways, so upright is portrait (V1.4 SC101IOT 720 x 1280,
-    V1.2 OV3640 768 x 1024). 270 is 720 x 6/16: the board's PPA scales in steps of 1/16 only
-    (ESP-IDF ppa.rst), so 270 takes V1.4's whole 720 px short side (about 42 x 42 degrees) and the
-    centre 720 of V1.2's 768; it is also the largest such square that leaves room for the rows below
-    (280 would need the kit preview's 640 crop, 288 does not fit). tools/camera_live.py emulates it.
-  * The rows below the view keep their own width (CONTENT_W, the former 368 px view), so the name,
-    the pills and the spectrum do not shrink with the square.
+  * The view is 16:9 (owner 26.10.2026: "Bildausschnitt wie bei Zielkamera 16:9"; it was a 270 px
+    square before): the module is mounted for landscape, so the V1.4 SC101IOT's whole 1280 x 720
+    frame (73 x 42 degrees) is the view. The board's PPA scales in steps of 1/16 only (ESP-IDF
+    ppa.rst): 1280 x 5/16 = 400, the widest step inside the 424 px panel (6/16 = 480 is the whole
+    screen). 224 rows, not 720 x 5/16 = 225: whole 16 px blocks for the JPEG encoder (main/camera.c).
+    V1.2 OV3640 (1024 x 768): its centre 916 x 512 at 7/16 gives the same 400 x 224 (6/16 of its whole
+    16:9 band would be 384 x 216, a frame of another size). tools/camera_live.py emulates both.
+  * The rows below take the view's width (CONTENT_W = CAM_W), so their edges line up with it.
   * Box geometry is a bounded dynamic field, set in pixels inside the camera view (chakra_core.c):
     x and y move the box with its pill. A dynamic w or h resizes only a container's own fill, not
     its border, so the four edges are thin fills (8 setters a box; the core spreads them over ticks).
@@ -52,12 +52,13 @@ SCREEN_RADIUS = 20  # ~/Coding/esp/DESIGN.md
 # The coloured frame's width; the owner asked for 18 to 28. 28 chosen on 25.10.2026 against 20: the light
 # reads as the frame of the room's colour, and the rows below still fit (tools/screens.py --frame).
 FRAME = int(os.environ.get("CHAKRAV_FRAME", "28"))
-CAM_W = CAM_H = 270      # the square camera view; chakra_core.h CHAKRA_CAM_W/H, tools/camera_live.py VIEW
+CAM_W, CAM_H = 400, 224  # the 16:9 camera view; chakra_core.h CHAKRA_CAM_W/H, tools/camera_live.py W, H
 CAM_X = (480 - CAM_W) // 2
-CONTENT_W = 368          # the rows below the view: name, pills, spectrum (wider than the square)
+CONTENT_W = CAM_W        # the rows below the view: name, pills, spectrum, aligned with its edges
 CONTENT_X = (480 - CONTENT_W) // 2
 TOP_H = 52               # the top bar inside the panel
-CAM_Y = FRAME + TOP_H + 8
+CAM_Y = FRAME + TOP_H + 16
+ROW1_GAP, ROW2_GAP = 20, 50  # the view to the name row; the name row's top to the pills' top
 BOXES = 7                # chakra_core.h CHAKRA_BOXES: one a chakra bowl
 EDGE, BOX_MIN = 3, 16    # a box's edge width; its smallest width and height
 PLAY_EDGE = 6            # a played box's edges, thicker
@@ -70,7 +71,8 @@ BAR_PITCH, BAR_W = 8, 6  # a band's step and width; chakra_core.c BAR_PITCH, BAR
 BAND_NOTE0 = 9           # the window starts on an A (A2 for octave 3), so band j is note (9 + j) % 12
 SPEC_W = BARS * BAR_PITCH - (BAR_PITCH - BAR_W)
 BAR_X0 = CONTENT_X + CONTENT_W - SPEC_W
-HEARD_W, SEEN_W = 100, 116       # the pills beside it
+HEARD_W, SEEN_W, PILL_GAP = 112, 128, 8  # the pills beside it
+ROW_H = 34                # their height; the spectrum's bars are as tall, its dots below them
 NOTE_TO_CHAKRA = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 6, 6]  # chakra_detect.c, C .. B
 DOT_NOTES = [0, 2, 4, 5, 7, 9, 11]  # each chakra's dot sits at its natural note, C .. B
 CAM_DOT, MIC_DOT, IDLE_DOT = "#30D158", "#FF9F0A", "#8E8E93"  # DESIGN.md: Apple's dark-mode indicator colours
@@ -227,26 +229,28 @@ def camera_view():
 
 def below_view():
     # Row 1: the chakra's name left, note and Hz right. Row 2: heard, seen, the small spectrum.
-    y1 = CAM_Y + CAM_H + 10
-    text("name_text", None, CONTENT_X, y1, 176, 32, 26, XBOLD, WHITE, sample="Ready", overflow="ellipsis")
-    text("sub_text", None, CONTENT_X + 176, y1 + 7, CONTENT_W - 176, 22, 16, BOLD, MUTED, align="right",
+    # The 16:9 view left more height than the square: the rows are larger and further apart
+    # (owner 26.10.2026, "ruhig und lesbar"), name 28 px, pills 34 px with 15 px text.
+    y1 = CAM_Y + CAM_H + ROW1_GAP
+    text("name_text", None, CONTENT_X, y1, 210, 36, 28, XBOLD, WHITE, sample="Ready", overflow="ellipsis")
+    text("sub_text", None, CONTENT_X + 210, y1 + 9, CONTENT_W - 210, 22, 17, BOLD, MUTED, align="right",
          sample="Strike a bowl or hum", overflow="ellipsis")
-    y2 = y1 + 40
+    y2 = y1 + ROW2_GAP
     # Row 2: heard and seen at the left, the spectrum at the right (SPEC_W, from the row's right edge).
     for key, x, w, code, sample in (("heard", CONTENT_X, HEARD_W, WAVE, "Bowl"),
-                                    ("seen", CONTENT_X + HEARD_W + 5, SEEN_W, EYE, "Bowl")):
-        add("container", None, None, x=x, y=y2, w=w, h=30, radius=15, bg_color=TILE)
-        add("container", f"{key}_dot", None, x=x + 10, y=y2 + 11, w=8, h=8, radius=4, bg_color=OFF,
+                                    ("seen", CONTENT_X + HEARD_W + PILL_GAP, SEEN_W, EYE, "Bowl")):
+        add("container", None, None, x=x, y=y2, w=w, h=ROW_H, radius=ROW_H // 2, bg_color=TILE)
+        add("container", f"{key}_dot", None, x=x + 12, y=y2 + 13, w=8, h=8, radius=4, bg_color=OFF,
             bind=f"{key}_dot", bind_target="color")
-        icon(None, x + 23, y2 + 7, 16, code, color=MUTED)
-        text(f"{key}_text", None, x + 43, y2 + 7, w - 50, 18, 13, BOLD, WHITE, sample=sample, overflow="ellipsis")
+        icon(None, x + 26, y2 + 8, 18, code, color=MUTED)
+        text(f"{key}_text", None, x + 48, y2 + 8, w - 56, 20, 15, BOLD, WHITE, sample=sample, overflow="ellipsis")
     # The spectrum as an analyser shows it: one band a semitone on a log axis, neutral white, the
     # octave of the last locked tone with three semitones either side (A2 to D4 for octave 3;
     # chakra_core.c moves the window); the locked tone's band lights in its note's colour. Under it
     # the seven chakra dots at their notes' bands, C .. B; the shown chakra's dot bright and larger.
     # Fixed colours with only heights, x and visible flags bound (GSP 1.5.1 refuses a bound colour
     # on a container with a dynamic size).
-    pitch, bw, bh = BAR_PITCH, BAR_W, 22
+    pitch, bw, bh = BAR_PITCH, BAR_W, ROW_H - 8
     x0 = BAR_X0
     for b in range(BARS):
         x = x0 + b * pitch
@@ -255,7 +259,7 @@ def below_view():
         group(f"grp_hot_{b}", None, x, y2, bw, bh)
         add("progress", f"hot_{b}", f"grp_hot_{b}", x=0, y=0, w=bw, h=bh, vertical=True, min=0, max=100, value=0,
             bg_color="#00000000", fg_color=CHAKRA_RGB[NOTE_TO_CHAKRA[(BAND_NOTE0 + b) % 12]], radius=2)
-    dy = y2 + bh + 4  # the dots' centre line
+    dy = y2 + bh + 5  # the dots' centre line
     for i in range(7):
         b = 12 - BAND_NOTE0 + DOT_NOTES[i]  # the note's band in the window
         add("container", f"dot_{i}", None, x=x0 + b * pitch + bw // 2 - 4, y=dy - 4, w=8, h=8, bg_opacity=0)

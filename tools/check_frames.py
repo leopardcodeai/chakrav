@@ -3,7 +3,7 @@
 when the camera light's Auto would switch on.
 
 What: runs the frames of a video (or the drawn demo scene) at the app's frame rate and size
-      (the 270 x 270 square of the emulated module, as tools/camera_live.py sends it; --module) through
+      (the 400 x 224 16:9 view of the emulated module, as tools/camera_live.py sends it; --module) through
         luma      the mean luma 0..255 (what the app's Auto reads)
         contrast  the luma's standard deviation: low means flat, hard to detect anything in
         change    the mean luma difference to the frame before: a moving or changing background

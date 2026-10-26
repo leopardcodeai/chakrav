@@ -23,12 +23,14 @@ extern "C" {
 
 #define CHAKRA_LAMPS 4  // rows in the settings' lamp list (ui/make_scene.py LAMPS)
 #define CHAKRA_BOXES 7  // instrument marks over the camera view, one a chakra bowl (ui/make_scene.py BOXES)
-/* The camera view in pixels, square: the centre of the upright picture, as the camera kit's preview
- * shows it. A frame must have exactly this size. 270 = 720 x 6/16 (the PPA scales in 1/16 steps):
- * all of the V1.4 SC101IOT's 720 px short side, the centre 720 of the V1.2 OV3640's 768
- * (ui/make_scene.py CAM_W, tools/camera_live.py VIEW, main/camera.c). */
-#define CHAKRA_CAM_W 270
-#define CHAKRA_CAM_H 270
+/* The camera view in pixels, 16:9 like the V1.4 module's 1280 x 720 frame (owner 26.10.2026:
+ * "Bildausschnitt wie bei Zielkamera 16:9"). A frame must have exactly this size. 400 = 1280 x 5/16
+ * (the board's PPA scales in 1/16 steps), so the view is V1.4's whole frame, 73 x 42 degrees; 224
+ * instead of 720 x 5/16 = 225 keeps both sides whole 16 px blocks for the JPEG encoder (main/camera.c,
+ * one row of 225 dropped). V1.2 OV3640: its centre 916 x 512 at 7/16 (ui/make_scene.py CAM_W,
+ * tools/camera_live.py W, H). */
+#define CHAKRA_CAM_W 400
+#define CHAKRA_CAM_H 224
 
 /* CHAKRA_LAMP_SCREEN: a full-screen colour page (a TV or laptop browser in fullscreen is the lamp);
  * its address stands large on the Connections page. New kinds go at the end: rows keep their kind. */

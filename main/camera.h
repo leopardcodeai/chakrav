@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // ChakraV's camera on the board: the ESP-Mosaico camera module in the left slot, V1.4 (SC101IOT)
-// or V1.2 (OV3640), as the square view's JPEG frames, their mean luma and the module's flash LED.
+// or V1.2 (OV3640), as the 16:9 view's JPEG frames, their mean luma and the module's flash LED.
 // The task runs on its own; the UI side only takes finished frames (camera.c, header comment).
 #pragma once
 

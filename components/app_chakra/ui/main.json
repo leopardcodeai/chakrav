@@ -54,10 +54,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 105,
-   "y": 88,
-   "w": 270,
-   "h": 270,
+   "x": 40,
+   "y": 96,
+   "w": 400,
+   "h": 224,
    "radius": 20,
    "bg_color": "#221F2A"
   },
@@ -65,10 +65,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_cam_wait",
-   "x": 105,
-   "y": 88,
-   "w": 270,
-   "h": 270,
+   "x": 40,
+   "y": 96,
+   "w": 400,
+   "h": 224,
    "hidden": false,
    "bind": "grp_cam_wait",
    "bind_target": "visible"
@@ -77,8 +77,8 @@
    "type": "label",
    "parent_name": "grp_cam_wait",
    "name": "cam_icon",
-   "x": 99,
-   "y": 83,
+   "x": 164,
+   "y": 60,
    "w": 72,
    "h": 72,
    "text": "󰄀",
@@ -94,8 +94,8 @@
    "parent_name": "grp_cam_wait",
    "name": "cam_wait_text",
    "x": 0,
-   "y": 169,
-   "w": 270,
+   "y": 146,
+   "w": 400,
    "h": 26,
    "text": "Waiting for camera",
    "font_size": 17,
@@ -110,10 +110,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_cam_img",
-   "x": 105,
-   "y": 88,
-   "w": 270,
-   "h": 270,
+   "x": 40,
+   "y": 96,
+   "w": 400,
+   "h": 224,
    "hidden": true,
    "bind": "grp_cam_img",
    "bind_target": "visible"
@@ -124,8 +124,8 @@
    "name": "cam_img",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "image": "art/cam_placeholder.png",
    "bind": "cam_img",
    "bind_target": "resource",
@@ -135,10 +135,10 @@
    "type": "container",
    "parent": -1,
    "name": "box_clip",
-   "x": 105,
-   "y": 88,
-   "w": 270,
-   "h": 270,
+   "x": 40,
+   "y": 96,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "clip_children": true
   },
@@ -152,17 +152,17 @@
    "x": {
     "default": 20,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 40,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -174,7 +174,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -190,7 +190,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -202,7 +202,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -210,7 +210,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -223,13 +223,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -241,8 +241,8 @@
    "name": "grp_play_0",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_0",
@@ -257,7 +257,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -273,7 +273,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -285,7 +285,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -293,7 +293,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -306,13 +306,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -395,17 +395,17 @@
    "x": {
     "default": 50,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 64,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -417,7 +417,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -433,7 +433,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -445,7 +445,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -453,7 +453,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -466,13 +466,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -484,8 +484,8 @@
    "name": "grp_play_1",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_1",
@@ -500,7 +500,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -516,7 +516,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -528,7 +528,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -536,7 +536,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -549,13 +549,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -638,17 +638,17 @@
    "x": {
     "default": 80,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 88,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -660,7 +660,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -676,7 +676,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -688,7 +688,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -696,7 +696,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -709,13 +709,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -727,8 +727,8 @@
    "name": "grp_play_2",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_2",
@@ -743,7 +743,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -759,7 +759,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -771,7 +771,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -779,7 +779,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -792,13 +792,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -881,17 +881,17 @@
    "x": {
     "default": 110,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 112,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -903,7 +903,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -919,7 +919,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -931,7 +931,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -939,7 +939,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -952,13 +952,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -970,8 +970,8 @@
    "name": "grp_play_3",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_3",
@@ -986,7 +986,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1002,7 +1002,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1014,7 +1014,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1022,7 +1022,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1035,13 +1035,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1124,17 +1124,17 @@
    "x": {
     "default": 140,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 136,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -1146,7 +1146,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1162,7 +1162,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1174,7 +1174,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1182,7 +1182,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1195,13 +1195,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1213,8 +1213,8 @@
    "name": "grp_play_4",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_4",
@@ -1229,7 +1229,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1245,7 +1245,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1257,7 +1257,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1265,7 +1265,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1278,13 +1278,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1367,17 +1367,17 @@
    "x": {
     "default": 170,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 160,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -1389,7 +1389,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1405,7 +1405,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1417,7 +1417,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1425,7 +1425,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1438,13 +1438,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1456,8 +1456,8 @@
    "name": "grp_play_5",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_5",
@@ -1472,7 +1472,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1488,7 +1488,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1500,7 +1500,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1508,7 +1508,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1521,13 +1521,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1610,17 +1610,17 @@
    "x": {
     "default": 200,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": {
     "default": 184,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0
   },
   {
@@ -1632,7 +1632,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1648,7 +1648,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1660,7 +1660,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1668,7 +1668,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#8E8E93"
@@ -1681,13 +1681,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 3,
@@ -1699,8 +1699,8 @@
    "name": "grp_play_6",
    "x": 0,
    "y": 0,
-   "w": 270,
-   "h": 270,
+   "w": 400,
+   "h": 224,
    "bg_opacity": 0,
    "hidden": true,
    "bind": "grp_play_6",
@@ -1715,7 +1715,7 @@
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1731,7 +1731,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1743,7 +1743,7 @@
    "x": {
     "default": 137,
     "min": 0,
-    "max": 270,
+    "max": 400,
     "property": "x"
    },
    "y": 0,
@@ -1751,7 +1751,7 @@
    "h": {
     "default": 110,
     "min": 16,
-    "max": 270,
+    "max": 224,
     "property": "height"
    },
    "bg_color": "#FF9F0A"
@@ -1764,13 +1764,13 @@
    "y": {
     "default": 107,
     "min": 0,
-    "max": 270,
+    "max": 224,
     "property": "y"
    },
    "w": {
     "default": 140,
     "min": 16,
-    "max": 270,
+    "max": 400,
     "property": "width"
    },
    "h": 6,
@@ -1846,10 +1846,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 95,
-   "y": 78,
-   "w": 290,
-   "h": 290,
+   "x": 30,
+   "y": 86,
+   "w": 420,
+   "h": 244,
    "radius": 30,
    "bg_color": "#00000000",
    "border_color": "#0E0C12",
@@ -1858,10 +1858,10 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 103,
-   "y": 86,
-   "w": 274,
-   "h": 274,
+   "x": 38,
+   "y": 94,
+   "w": 404,
+   "h": 228,
    "radius": 22,
    "bg_color": "#00000000",
    "border_color": "#FFFFFF24",
@@ -1871,12 +1871,12 @@
    "type": "label",
    "parent": -1,
    "name": "name_text",
-   "x": 56,
-   "y": 368,
-   "w": 176,
-   "h": 32,
+   "x": 40,
+   "y": 340,
+   "w": 210,
+   "h": 36,
    "text": "Ready",
-   "font_size": 26,
+   "font_size": 28,
    "font": "fonts/Inter-ExtraBold.ttf",
    "fg_color": "#FFFFFF",
    "text_align": "left",
@@ -1888,12 +1888,12 @@
    "type": "label",
    "parent": -1,
    "name": "sub_text",
-   "x": 232,
-   "y": 375,
-   "w": 192,
+   "x": 250,
+   "y": 349,
+   "w": 190,
    "h": 22,
    "text": "Strike a bowl or hum",
-   "font_size": 16,
+   "font_size": 17,
    "font": "fonts/Inter-Bold.ttf",
    "fg_color": "#FFFFFFAD",
    "text_align": "right",
@@ -1904,19 +1904,19 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 56,
-   "y": 408,
-   "w": 100,
-   "h": 30,
-   "radius": 15,
+   "x": 40,
+   "y": 390,
+   "w": 112,
+   "h": 34,
+   "radius": 17,
    "bg_color": "#221F2A"
   },
   {
    "type": "container",
    "parent": -1,
    "name": "heard_dot",
-   "x": 66,
-   "y": 419,
+   "x": 52,
+   "y": 403,
    "w": 8,
    "h": 8,
    "radius": 4,
@@ -1927,12 +1927,12 @@
   {
    "type": "label",
    "parent": -1,
-   "x": 79,
-   "y": 415,
-   "w": 16,
-   "h": 16,
+   "x": 66,
+   "y": 398,
+   "w": 18,
+   "h": 18,
    "text": "󱑽",
-   "font_size": 16,
+   "font_size": 18,
    "font": "fonts/MaterialDesignIcons.ttf",
    "fg_color": "#FFFFFFAD",
    "text_align": "center",
@@ -1942,12 +1942,12 @@
    "type": "label",
    "parent": -1,
    "name": "heard_text",
-   "x": 99,
-   "y": 415,
-   "w": 50,
-   "h": 18,
+   "x": 88,
+   "y": 398,
+   "w": 56,
+   "h": 20,
    "text": "Bowl",
-   "font_size": 13,
+   "font_size": 15,
    "font": "fonts/Inter-Bold.ttf",
    "fg_color": "#FFFFFF",
    "text_align": "left",
@@ -1958,19 +1958,19 @@
   {
    "type": "container",
    "parent": -1,
-   "x": 161,
-   "y": 408,
-   "w": 116,
-   "h": 30,
-   "radius": 15,
+   "x": 160,
+   "y": 390,
+   "w": 128,
+   "h": 34,
+   "radius": 17,
    "bg_color": "#221F2A"
   },
   {
    "type": "container",
    "parent": -1,
    "name": "seen_dot",
-   "x": 171,
-   "y": 419,
+   "x": 172,
+   "y": 403,
    "w": 8,
    "h": 8,
    "radius": 4,
@@ -1981,12 +1981,12 @@
   {
    "type": "label",
    "parent": -1,
-   "x": 184,
-   "y": 415,
-   "w": 16,
-   "h": 16,
+   "x": 186,
+   "y": 398,
+   "w": 18,
+   "h": 18,
    "text": "󰛐",
-   "font_size": 16,
+   "font_size": 18,
    "font": "fonts/MaterialDesignIcons.ttf",
    "fg_color": "#FFFFFFAD",
    "text_align": "center",
@@ -1996,12 +1996,12 @@
    "type": "label",
    "parent": -1,
    "name": "seen_text",
-   "x": 204,
-   "y": 415,
-   "w": 66,
-   "h": 18,
+   "x": 208,
+   "y": 398,
+   "w": 72,
+   "h": 20,
    "text": "Bowl",
-   "font_size": 13,
+   "font_size": 15,
    "font": "fonts/Inter-Bold.ttf",
    "fg_color": "#FFFFFF",
    "text_align": "left",
@@ -2013,10 +2013,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_0",
-   "x": 282,
-   "y": 408,
+   "x": 298,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2029,10 +2029,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_0",
-   "x": 282,
-   "y": 408,
+   "x": 298,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_0",
    "bind_target": "visible"
@@ -2044,7 +2044,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2057,10 +2057,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_1",
-   "x": 290,
-   "y": 408,
+   "x": 306,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2073,10 +2073,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_1",
-   "x": 290,
-   "y": 408,
+   "x": 306,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_1",
    "bind_target": "visible"
@@ -2088,7 +2088,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2101,10 +2101,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_2",
-   "x": 298,
-   "y": 408,
+   "x": 314,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2117,10 +2117,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_2",
-   "x": 298,
-   "y": 408,
+   "x": 314,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_2",
    "bind_target": "visible"
@@ -2132,7 +2132,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2145,10 +2145,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_3",
-   "x": 306,
-   "y": 408,
+   "x": 322,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2161,10 +2161,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_3",
-   "x": 306,
-   "y": 408,
+   "x": 322,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_3",
    "bind_target": "visible"
@@ -2176,7 +2176,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2189,10 +2189,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_4",
-   "x": 314,
-   "y": 408,
+   "x": 330,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2205,10 +2205,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_4",
-   "x": 314,
-   "y": 408,
+   "x": 330,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_4",
    "bind_target": "visible"
@@ -2220,7 +2220,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2233,10 +2233,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_5",
-   "x": 322,
-   "y": 408,
+   "x": 338,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2249,10 +2249,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_5",
-   "x": 322,
-   "y": 408,
+   "x": 338,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_5",
    "bind_target": "visible"
@@ -2264,7 +2264,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2277,10 +2277,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_6",
-   "x": 330,
-   "y": 408,
+   "x": 346,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2293,10 +2293,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_6",
-   "x": 330,
-   "y": 408,
+   "x": 346,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_6",
    "bind_target": "visible"
@@ -2308,7 +2308,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2321,10 +2321,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_7",
-   "x": 338,
-   "y": 408,
+   "x": 354,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2337,10 +2337,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_7",
-   "x": 338,
-   "y": 408,
+   "x": 354,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_7",
    "bind_target": "visible"
@@ -2352,7 +2352,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2365,10 +2365,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_8",
-   "x": 346,
-   "y": 408,
+   "x": 362,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2381,10 +2381,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_8",
-   "x": 346,
-   "y": 408,
+   "x": 362,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_8",
    "bind_target": "visible"
@@ -2396,7 +2396,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2409,10 +2409,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_9",
-   "x": 354,
-   "y": 408,
+   "x": 370,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2425,10 +2425,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_9",
-   "x": 354,
-   "y": 408,
+   "x": 370,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_9",
    "bind_target": "visible"
@@ -2440,7 +2440,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2453,10 +2453,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_10",
-   "x": 362,
-   "y": 408,
+   "x": 378,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2469,10 +2469,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_10",
-   "x": 362,
-   "y": 408,
+   "x": 378,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_10",
    "bind_target": "visible"
@@ -2484,7 +2484,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2497,10 +2497,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_11",
-   "x": 370,
-   "y": 408,
+   "x": 386,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2513,10 +2513,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_11",
-   "x": 370,
-   "y": 408,
+   "x": 386,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_11",
    "bind_target": "visible"
@@ -2528,7 +2528,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2541,10 +2541,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_12",
-   "x": 378,
-   "y": 408,
+   "x": 394,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2557,10 +2557,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_12",
-   "x": 378,
-   "y": 408,
+   "x": 394,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_12",
    "bind_target": "visible"
@@ -2572,7 +2572,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2585,10 +2585,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_13",
-   "x": 386,
-   "y": 408,
+   "x": 402,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2601,10 +2601,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_13",
-   "x": 386,
-   "y": 408,
+   "x": 402,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_13",
    "bind_target": "visible"
@@ -2616,7 +2616,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2629,10 +2629,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_14",
-   "x": 394,
-   "y": 408,
+   "x": 410,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2645,10 +2645,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_14",
-   "x": 394,
-   "y": 408,
+   "x": 410,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_14",
    "bind_target": "visible"
@@ -2660,7 +2660,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2673,10 +2673,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_15",
-   "x": 402,
-   "y": 408,
+   "x": 418,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2689,10 +2689,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_15",
-   "x": 402,
-   "y": 408,
+   "x": 418,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_15",
    "bind_target": "visible"
@@ -2704,7 +2704,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2717,10 +2717,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_16",
-   "x": 410,
-   "y": 408,
+   "x": 426,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2733,10 +2733,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_16",
-   "x": 410,
-   "y": 408,
+   "x": 426,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_16",
    "bind_target": "visible"
@@ -2748,7 +2748,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2761,10 +2761,10 @@
    "type": "progress",
    "parent": -1,
    "name": "bar_17",
-   "x": 418,
-   "y": 408,
+   "x": 434,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2777,10 +2777,10 @@
    "type": "container",
    "parent": -1,
    "name": "grp_hot_17",
-   "x": 418,
-   "y": 408,
+   "x": 434,
+   "y": 390,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "hidden": true,
    "bind": "grp_hot_17",
    "bind_target": "visible"
@@ -2792,7 +2792,7 @@
    "x": 0,
    "y": 0,
    "w": 6,
-   "h": 22,
+   "h": 26,
    "vertical": true,
    "min": 0,
    "max": 100,
@@ -2805,8 +2805,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_0",
-   "x": 305,
-   "y": 430,
+   "x": 321,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2848,8 +2848,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_1",
-   "x": 321,
-   "y": 430,
+   "x": 337,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2891,8 +2891,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_2",
-   "x": 337,
-   "y": 430,
+   "x": 353,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2934,8 +2934,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_3",
-   "x": 345,
-   "y": 430,
+   "x": 361,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -2977,8 +2977,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_4",
-   "x": 361,
-   "y": 430,
+   "x": 377,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -3020,8 +3020,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_5",
-   "x": 377,
-   "y": 430,
+   "x": 393,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0
@@ -3063,8 +3063,8 @@
    "type": "container",
    "parent": -1,
    "name": "dot_6",
-   "x": 393,
-   "y": 430,
+   "x": 409,
+   "y": 417,
    "w": 8,
    "h": 8,
    "bg_opacity": 0

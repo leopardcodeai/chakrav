@@ -3,7 +3,7 @@
 
 What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBook Pro Camera") or
       a video, emulates what the ESP-Mosaico's camera module gives the app (--module, below),
-      writes each frame as a JPEG of the view's exact size (270 x 270, chakra_core.h
+      writes each frame as a JPEG of the view's exact size (400 x 224, 16:9, chakra_core.h
       CHAKRA_CAM_W/H) to one temp file that every frame overwrites, and tells the app on its line
       port (127.0.0.1:8711, CHAKRA_AI_PORT):
         source<TAB><text><TAB><camera|video|demo> once: the Camera page's source line, the mode mark
@@ -28,16 +28,15 @@ What: takes pictures from the Mac's built-in camera (ffmpeg avfoundation, "MacBo
         --module      v1.4 (default: the SC101IOT module the board is expected with) or v1.2
                       (OV3640). --mount landscape (default) keeps the module's frame upright as it comes,
                       1280 x 720; --mount portrait turns it, as when the module sits sideways:
-                      V1.4 720 x 1280 (9:16), V1.2 768 x 1024 (3:4). The app shows its centre
-                      square, as the camera kit's preview does: 720 x 720 scaled to 270 (the board's
-                      PPA scales in 1/16 steps, 720 x 6/16 = 270), the same 720 on V1.2. A --video
-                      becomes the upright frame (scaled to cover it, centred; the owner's portrait
-                      9:16 videos fit V1.4 exactly), then that square. The Mac camera's 16:9
-                      picture cannot hold the upright frame, but holds its square: the centre of
-                      the Mac's picture at the square's field of view (V1.4 about 42 x 42 degrees,
-                      the docs' 73 x 42 lens; V1.2 about 41.6, from 68 degrees diagonal), limited
-                      to what the Mac sees (its 70 degrees are an estimate, as in apps/camera
-                      cam_twin.py).
+                      V1.4 720 x 1280 (9:16), V1.2 768 x 1024 (3:4). The app shows the centre
+                      16:9 band of it at the board's 1/16 scale step (view_crop, as main/camera.c):
+                      landscape V1.4 its whole frame at 5/16 (73 x 42 degrees), V1.2 its centre
+                      916 x 512 at 7/16 (about 51 x 30); portrait a 712 x 400 band at 9/16 (about
+                      42 x 26 on V1.4). A --video becomes the upright frame (scaled to cover it,
+                      centred), then that band. The Mac camera's 16:9 picture is cut to the band's
+                      field of view, limited to what the Mac sees (its 70 degrees are an estimate, as
+                      in apps/camera cam_twin.py): V1.4's 73 degrees are wider, so the Mac's whole
+                      picture.
       Without --demo-boxes no boxes are sent: there is no detector yet, and the seen pill says so.
       Real detection is the next step (README, "Next"): an open-vocabulary detector such as
       OWL-ViT on the Mac first, later a trained ESPDet-Pico on the ESP32-S31.
@@ -51,9 +50,13 @@ Pitfalls:
     launcher's parent). Denied, ffmpeg fails at once: this script says so and waits; it never
     tries another way. Allow it in System Settings, Privacy & Security, Camera.
   * The camera runs at 30 fps natively; ffmpeg's fps filter picks the 1, 2 or 4 frames a second.
-  * The app takes only frames of exactly 270 x 270 (images play at their native size in GSP).
-  * The detector gets the same square at twice the size (540 x 540): OWL-ViT scores the bowls far
-    better there; the app gets its 270 scaled from it. Boxes are normalised, so both agree.
+  * The app takes only frames of exactly 400 x 224 (images play at their native size in GSP).
+  * The detector gets more pixels than the app: with a video the whole upright frame at 3/4 of its
+    size (960 x 540 on V1.4, as before the 16:9 view), from the Mac camera the view at twice its size
+    (800 x 448). OWL-ViT scores bowls far better there; the app's frame is cut and scaled from it.
+    Boxes are normalised; to_view() moves the detector's into the view, the identity where the view
+    is the whole frame (V1.4 landscape). Portrait mount: the view is a 16:9 band across the upright
+    portrait frame, so to_view() shifts and stretches y and drops what lies outside.
   * Not emulated: the sensor's colour, exposure, noise and lens (manual focus), and its frame
     rate (the app asks for 1, 2 or 4 fps). apps/camera cam_twin.py models the module further.
 Usage:  camera_live.py [--demo] [--demo-boxes] [--module v1.4|v1.2] [--video FILE] [--detect] [--port 8711]
@@ -74,17 +77,17 @@ import threading
 import time
 from pathlib import Path
 
-VIEW = 270        # the square view: chakra_core.h CHAKRA_CAM_W = CHAKRA_CAM_H, ui/make_scene.py CAM_W
-W, H = VIEW, VIEW
-CROP = 720        # the upright square the board scales to VIEW: 720 x 6/16 (main/camera.c)
+W, H = 400, 224   # the 16:9 view: chakra_core.h CHAKRA_CAM_W/H, ui/make_scene.py CAM_W/H
+DETECT_K = 0.75   # a video's upright frame goes to the detector at this share of its size (960 x 540 on V1.4)
 DEFAULT_DEVICE = "MacBook Pro Camera"
 # The ESP-Mosaico camera modules (Espressif user_guide_camera; apps/camera cam_twin.py MODULES).
 # raw: the sensor frame as it comes (landscape). The module can be mounted either way (owner 26.10.2026:
 # "Querformat, die Kamera kann seitlich angeordnet werden"): MOUNT "landscape" keeps the raw frame upright
-# (1280 x 720, 73 x 42 deg on V1.4), "portrait" turns it (720 x 1280). fov: the short side in degrees.
+# (1280 x 720, 73 x 42 deg on V1.4), "portrait" turns it (720 x 1280). fov: the raw frame's width and
+# height in degrees.
 MODULES = {
-    "v1.4": {"sensor": "SC101IOT", "raw": (1280, 720), "fps": 15, "fov": 42.0},  # docs H 73 / V 42, 3.1 mm F1.8
-    "v1.2": {"sensor": "OV3640", "raw": (1024, 768), "fps": 25, "fov": 44.1},    # docs 68 diagonal: 56.7 x 44.1
+    "v1.4": {"sensor": "SC101IOT", "raw": (1280, 720), "fps": 15, "fov": (73.0, 42.0)},  # docs H 73 / V 42, 3.1 mm F1.8
+    "v1.2": {"sensor": "OV3640", "raw": (1024, 768), "fps": 25, "fov": (56.7, 44.1)},    # docs 68 diagonal
 }
 MAC_SIZE, MAC_HFOV = (1920, 1080), 70.0  # the Mac's picture; its field of view is an estimate (cam_twin.py)
 
@@ -92,45 +95,61 @@ MAC_SIZE, MAC_HFOV = (1920, 1080), 70.0  # the Mac's picture; its field of view 
 MOUNT = "landscape"  # --mount; main() sets it
 
 
+def view_crop(uw: int, uh: int) -> tuple[float, float, int] | None:
+    """The part of an upright uw x uh frame that becomes the W x H view, as main/camera.c view_crop()
+    takes it: the smallest PPA step n/16 (the widest view) at which a centred W x H band fits, so the
+    band is (W x 16/n) x (H x 16/n). V1.4 landscape: 1280 x 716.8 at 5/16 (all of its 720 rows but
+    one view row); V1.2 landscape: 914 x 512 at 7/16 (the board takes 916, an even width); portrait
+    (both): 711 x 398 at 9/16 (the board: 712 x 400, of which 224 of 225 rows are kept)."""
+    for n in range(1, 17):
+        cw, ch = W * 16 / n, H * 16 / n
+        if cw <= uw and ch <= uh:
+            return cw, ch, n
+    return None
+
+
 def module_view(module: str) -> dict:
-    """What the module gives the app: the upright frame, the square taken from it, its angle."""
+    """What the module gives the app: the upright frame, the band taken from it, its angles."""
     m = MODULES[module]
-    uw, uh = m["raw"] if MOUNT == "landscape" else (m["raw"][1], m["raw"][0])
-    short = min(uw, uh)
-    crop = min(CROP, short)
-    t = math.tan(math.radians(m["fov"] / 2)) * crop / short
-    return {**m, "module": module, "upright": (uw, uh), "crop": crop, "square_deg": math.degrees(2 * math.atan(t)),
-            "tan": t}
+    landscape = MOUNT == "landscape"
+    uw, uh = m["raw"] if landscape else (m["raw"][1], m["raw"][0])
+    fw, fh = m["fov"] if landscape else (m["fov"][1], m["fov"][0])
+    cw, ch, n = view_crop(uw, uh)
+    if (uw - cw) * n / 16 < 1.001 and (uh - ch) * n / 16 < 1.001:
+        cw, ch = uw, uh  # at most one view row short of the whole frame (V1.4: 225 rows, 224 kept): all of it
+    tw = math.tan(math.radians(fw / 2)) * cw / uw
+    th = math.tan(math.radians(fh / 2)) * ch / uh
+    return {**m, "module": module, "upright": (uw, uh), "crop": (cw, ch), "step": n,
+            "deg": (math.degrees(2 * math.atan(tw)), math.degrees(2 * math.atan(th))), "tan": (tw, th)}
 
 
 def view_filter(module: str, fps: int, scale: int = 1, video: bool = True, full: bool = False) -> tuple[str, str]:
-    """The ffmpeg filter that makes the app's square from a video or the Mac's camera, and a note
-    of what it emulates. scale 2: the detector's double size. full (a video): the whole upright
-    frame at the scale whose square is VIEW * scale, for the detector; app_frame() cuts the square."""
+    """The ffmpeg filter that makes the app's 16:9 view from a video or the Mac's camera, and a note
+    of what it emulates. scale 2: twice the view's size (the detector's, from the Mac camera). full (a
+    video): the whole upright frame at DETECT_K of its size, for the detector; app_frame() cuts the view."""
     v = module_view(module)
-    side = VIEW * scale
+    uw, uh = v["upright"]
+    cw, ch = v["crop"]
+    dw, dh = v["deg"]
+    band = f"{cw:.0f} x {ch:.0f} at {v['step']}/16, about {dw:.0f} x {dh:.0f} deg"
     if video and full:
-        uw, uh = v["upright"]
-        k = side / v["crop"]
-        fw, fh = int(uw * k) // 2 * 2, int(uh * k) // 2 * 2
+        fw, fh = int(uw * DETECT_K) // 2 * 2, int(uh * DETECT_K) // 2 * 2
         vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
               f"scale={fw}:{fh}:flags=area")
-        return vf, f"upright {uw} x {uh} to the detector, square {v['crop']} x {v['crop']} on the screen"
+        return vf, f"upright {uw} x {uh} to the detector at {fw} x {fh}, the view {band}"
     if video:
-        uw, uh = v["upright"]
-        c = v["crop"]
         vf = (f"fps={fps},scale={uw}:{uh}:force_original_aspect_ratio=increase,crop={uw}:{uh},"
-              f"crop={c}:{c},scale={side}:{side}:flags=area")
-        return vf, f"upright {uw} x {uh}, square {c} x {c}, about {v['square_deg']:.0f} deg"
-    # The share of the Mac's picture height that holds the square's angle; as an ffmpeg expression,
-    # so it holds whatever size avfoundation opens (1920 x 1080 assumed for the angle).
+              f"crop={round(cw)}:{round(ch)},scale={W * scale}:{H * scale}:flags=area")
+        return vf, f"upright {uw} x {uh}, the view {band}"
+    # The share of the Mac's 16:9 picture that holds the view's angle; as an ffmpeg expression, so it
+    # holds whatever size avfoundation opens (1920 x 1080 assumed for the angle).
     mw, mh = MAC_SIZE
-    m_tv = math.tan(math.radians(MAC_HFOV / 2)) * mh / mw
-    k = min(1.0, v["tan"] / m_tv)
-    deg = math.degrees(2 * math.atan(m_tv * k))
-    c = f"trunc(ih*{k:.4f}/2)*2"
-    vf = f"fps={fps},crop='{c}':'{c}',scale={side}:{side}:flags=area"
-    return vf, f"Mac square {k:.0%} of its height, about {deg:.0f} deg (module {v['square_deg']:.0f})"
+    m_th = math.tan(math.radians(MAC_HFOV / 2))
+    k = min(1.0, v["tan"][0] / m_th, v["tan"][1] / (m_th * mh / mw))
+    deg = math.degrees(2 * math.atan(m_th * k))
+    vf = (f"fps={fps},crop='trunc(iw*{k:.4f}/2)*2':'trunc(ih*{k:.4f}/2)*2',"
+          f"scale={W * scale}:{H * scale}:flags=area")
+    return vf, f"Mac {k:.0%} of its picture, about {deg:.0f} deg wide (module view {dw:.0f})"
 
 
 class App:
@@ -211,11 +230,11 @@ class FrameFile:
 
 def demo_objects(t: float) -> list[tuple[str, float, float, float, float, float]]:
     """Where the drawn instruments are at time t: (label, x, y, w, h, conf), normalised."""
-    bx = 0.05 + 0.03 * math.sin(t * 0.5)  # laid out for the square view
-    objs = [("Singing bowl", bx, 0.46, 0.46, 0.40, 0.90 + 0.05 * math.sin(t * 1.3))]
-    objs.append(("Tuning fork", 0.57, 0.22 + 0.03 * math.sin(t * 0.8), 0.15, 0.56, 0.78 + 0.08 * math.sin(t * 0.9)))
-    if math.sin(t * 0.25) > -0.3:  # the chimes leave the picture now and then
-        objs.append(("Chimes", 0.80, 0.05, 0.17, 0.40, 0.71 + 0.06 * math.sin(t * 1.7)))
+    bx = 0.10 + 0.02 * math.sin(t * 0.5)  # laid out for the 16:9 view
+    objs = [("Singing bowl", bx, 0.44, 0.30, 0.44, 0.90 + 0.05 * math.sin(t * 1.3))]
+    objs.append(("Tuning fork", 0.53, 0.20 + 0.03 * math.sin(t * 0.8), 0.09, 0.58, 0.78 + 0.08 * math.sin(t * 0.9)))
+    if math.sin(t * 0.25 - 2.0) > -0.3:  # the chimes leave the picture now and then (in view 7 to 21 s)
+        objs.append(("Chimes", 0.76, 0.05, 0.11, 0.42, 0.71 + 0.06 * math.sin(t * 1.7)))
     return objs
 
 
@@ -284,8 +303,8 @@ class StubBoxes:
 
 def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 1,
                   module: str = "v1.4", full: bool = False) -> subprocess.Popen:
-    """Frames of the module's square (view_filter); scale 2 gives the detector twice the size
-    (app_frame() makes the app's)."""
+    """Frames of the module's 16:9 view (view_filter); scale 2 gives the detector twice the size,
+    full a video's whole upright frame (app_frame() makes the app's view from either)."""
     vf, _ = view_filter(module, fps, scale, video=bool(video), full=full)
     # A video file instead of the camera: in real time, looped, its sound left to chakra_feed.py.
     src = ["-re", "-stream_loop", "-1", "-i", video, "-an"] if video else \
@@ -294,31 +313,31 @@ def ffmpeg_camera(device: str, fps: int, video: str | None = None, scale: int = 
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
-def app_frame(jpeg: bytes) -> bytes:
-    """The view's exact W x H from a bigger frame: the same square, or the whole upright frame
-    (then its centre square, as the board shows it)."""
+def app_frame(jpeg: bytes, crop: tuple[float, float] | None = None) -> bytes:
+    """The view's exact W x H from a bigger frame: the view at twice its size (crop None), or the
+    whole upright frame, of which crop (the band's share of width and height, module_view) is cut
+    from the centre, as the board takes it."""
     from io import BytesIO
     from PIL import Image
     img = Image.open(BytesIO(jpeg)).convert("RGB")
-    if img.height != img.width:  # the centre square, of a portrait or a landscape frame
-        side = min(img.width, img.height)
-        left, top = (img.width - side) // 2, (img.height - side) // 2
-        img = img.crop((left, top, left + side, top + side))
+    if crop and crop != (1.0, 1.0):
+        cw, ch = img.width * crop[0], img.height * crop[1]
+        left, top = (img.width - cw) / 2, (img.height - ch) / 2
+        img = img.crop((round(left), round(top), round(left + cw), round(top + ch)))
     out = BytesIO()
     img.resize((W, H), Image.LANCZOS).save(out, "JPEG", quality=85)
     return out.getvalue()
 
 
-def to_view(boxes, upright: tuple[int, int]):
-    """Boxes found in the whole upright frame (normalised to it) moved into the centre square the
-    screen shows, portrait or landscape: the long axis is shifted and stretched; a box less than a
-    third inside is dropped."""
-    if boxes is None:
-        return None
-    uw, uh = upright
-    side = min(uw, uh)
-    x0s, xs = (uw - side) / 2 / uw, side / uw  # the square's start and size, as shares of the frame
-    y0s, ys = (uh - side) / 2 / uh, side / uh
+def to_view(boxes, crop: tuple[float, float]):
+    """Boxes found in the whole upright frame (normalised to it) moved into the centred band the
+    screen shows; crop is the band's share of the frame's width and height (module_view). The
+    identity where the band is the whole frame (V1.4 landscape). Otherwise the axes are shifted and
+    stretched, a box is clipped to the view, and one less than a third inside is dropped."""
+    if boxes is None or crop == (1.0, 1.0):
+        return boxes
+    xs, ys = crop
+    x0s, y0s = (1 - xs) / 2, (1 - ys) / 2  # the band's start, as shares of the frame
     out = []
     for b in boxes:
         bx0, bx1 = (b[1] - x0s) / xs, (b[1] + b[3] - x0s) / xs
@@ -328,6 +347,12 @@ def to_view(boxes, upright: tuple[int, int]):
             continue
         out.append((b[0], cx0, cy0, cx1 - cx0, cy1 - cy0, *b[5:]))
     return out
+
+
+def crop_share(module: str) -> tuple[float, float]:
+    """The view's band as shares of the upright frame's width and height."""
+    v = module_view(module)
+    return v["crop"][0] / v["upright"][0], v["crop"][1] / v["upright"][1]
 
 
 def jpeg_frames(proc: subprocess.Popen):
@@ -409,10 +434,10 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
         app.changed.clear()
         fps = app.fps
         # OWL-ViT found the bowls at 0.05 in the former 368 x 276 view and at 0.2 to 0.4 in twice that
-        # (25.10.2026, the owner's video): the detector gets the double size, the app its own.
+        # (25.10.2026, the owner's video): the detector gets more pixels, the app its own.
         big = isinstance(stub, Detector)
-        # With a video the detector sees the whole upright frame, the screen only its centre square:
-        # the square cuts the ends of a row of bowls (25.10.2026, the player's end of IMG_2144).
+        # With a video the detector sees the whole upright frame (the former square cut the ends of a
+        # row of bowls, 25.10.2026); landscape V1.4 shows all of it now too.
         full = big and bool(video)
         proc = ffmpeg_camera(device, fps, video, 2 if big else 1, module, full)
         print(f"{'video ' + os.path.basename(video) if video else 'camera open: ' + device}, {fps} fps, "
@@ -422,8 +447,8 @@ def run_camera(app: App, files: FrameFile, device: str, stub: StubBoxes | None, 
             n += 1
             boxes = stub.boxes(jpeg, app.heard) if big else stub.boxes() if stub else None
             if full:
-                boxes = to_view(boxes, module_view(module)["upright"])
-            send_frame(app, files, app_frame(jpeg) if big else jpeg, boxes)
+                boxes = to_view(boxes, crop_share(module))
+            send_frame(app, files, app_frame(jpeg, crop_share(module) if full else None) if big else jpeg, boxes)
             if app.closed or not app.on or app.fps != fps:
                 break
         proc.terminate()

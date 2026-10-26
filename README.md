@@ -44,7 +44,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 | Chakra detection, lamps, screen lamp, local AI sound gate | as in ChakraA (1cbd13c): strikes are found by the spectral flux, so a loud ringing bowl no longer masks the next ones (7 of 7 strikes in a round where Flow showed Root alone before; 0.4 s in Flow, 0.1 s in Strike) |
 | Frame in the chakra's colour, fading, kicked by strikes | works in the simulator |
 | Calm light (26.10.2026): brightness 30 % by default (60 % before; a stored setting stays); a strike kicks at most once every 2 s, 8 points and 8 % white, under the WCAG flash line, so a drum at 4 beats a second never flashes per beat; a gong never kicks: the lamps swell 12 points over 1.5 s and fall back over 7 s, the colour kept, the heard pill says "Gong"; two lamp commands per kick or swell, a Hue bridge or Home Assistant at most 8 a second | host tests (`tests/run.sh`: a 4 Hz drum gives 10 kicks in 20 s instead of 83, 20 lamp commands instead of 250); the gong head finds 45 % of Commons gongs and 33 % of our own (ChakraA `tools/bench/gong_head.py`), a missed gong gets the small kick |
-| Live camera view: a square like the camera kit's preview, 270 x 270, from the Mac camera or a video, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`, emulating the V1.4 or V1.2 module) |
+| Live camera view: 16:9 like the camera module's frame, 400 x 224 (26.10.2026; a 270 x 270 square before), from the Mac camera or a video, 1, 2 or 4 fps | works in the simulator (`tools/camera_live.py`, emulating the V1.4 or V1.2 module) |
 | Instrument boxes with short label pills ("Bowl", "Bowl C"), up to 7, one a chakra bowl | the overlay works; the boxes come from a **stub** (`--demo-boxes`) |
 | Heard pill (orange dot while it hears), seen pill (green dot while it sees) | work |
 | Spectrum: one band a semitone, the locked tone's octave and three semitones either side (A2 to D4 for octave 3), its band in its chakra's colour; the seven chakra dots under their notes | works |
@@ -52,7 +52,7 @@ All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never 
 | Camera light: Off, On, Auto (default; on while the picture is dark) | works in the simulator (the Mac's camera has no light, so it is reported); on the board the module's flash LEDs (GPIO34), written, not yet run |
 | Settings: Settings, Connections, **Camera** (on, boxes, fps, Cloud AI) | work; stored as settings version 5 on the board |
 | Cloud AI (experimental) | a **stub**: the setting and `tools/cloud_vision.py` exist, nothing is sent in v0 |
-| Camera on the board | **written, builds, not yet run** (the board is on order): `main/camera.c` opens the module, tells V1.4 from V1.2, makes the square view and its luma, switches the flash |
+| Camera on the board | **written, builds, not yet run** (the board is on order): `main/camera.c` opens the module, tells V1.4 from V1.2, makes the 16:9 view and its luma, switches the flash |
 
 **There is no real detector yet.** The boxes in the screenshots are the demo scene's own positions; over
 the real camera, `--demo-boxes` sends boxes that drift plausibly and mark nothing. Without it no boxes are
@@ -70,12 +70,17 @@ sensor opens with (the BSP reads the sensor's ID first) and names it on the Came
 | Sensor | SC101IOT, 1 MP, 2.9 µm pixels (better in a dim room) | OV3640, 3 MP, 1.75 µm pixels |
 | Frame | 1280 x 720 UYVY, 15 fps | 1024 x 768 UYVY, 25 fps |
 | Lens | 3.1 mm F1.8, **manual focus**, 73 x 42 degrees | 68 degrees diagonal |
-| Upright picture (the module sits sideways) | 720 x 1280, portrait 9:16 | 768 x 1024, portrait 3:4 |
-| The app's square | the whole 720 px width, about 42 x 42 degrees | the centre 720 of 768, about 42 x 42 degrees |
+| Mounted | landscape (owner 26.10.2026): the frame stays 1280 x 720 | landscape: 1024 x 768 |
+| The app's 16:9 view, 400 x 224 | **the whole frame**, 1280 x 5/16, 73 x 42 degrees | the centre 916 x 512 at 7/16, about 51 x 30 degrees |
 | Flash | two LEDs on GPIO34, LOW = on, open drain (off when the host sleeps) | same |
 
-- **The view is square**, the centre of the upright picture, as the camera kit's preview shows it:
-  270 x 270 on the screen (720 x 6/16; the board's PPA scales in 1/16 steps).
+- **The view is 16:9, as the target camera sees** (owner 26.10.2026: "Bildausschnitt wie bei
+  Zielkamera 16:9"): 400 x 224 on the screen. The board's PPA scales in 1/16 steps; 1280 x 5/16 = 400
+  is the widest step inside the 424 px panel. 224 rows instead of 225 keep the JPEG encoder on whole
+  16 x 16 blocks (400 = 25 x 16, 224 = 14 x 16); one row of 225 is left out. V1.2 gives the same size
+  from its centre 916 x 512 at 7/16 (6/16 of its whole 16:9 band would be 384 x 216, a frame of another
+  size). Mounted sideways (`CHAKRA_CAM_LANDSCAPE 0`, `--mount portrait`) the view is a 16:9 band across
+  the upright portrait picture, 712 x 400 at 9/16, about 42 x 26 degrees on V1.4.
 - **Focus once.** The V1.4 lens has manual focus: turn it once to the distance of the bowls, with the
   live view open, then leave it.
 - **Light.** The flash LEDs are the camera light (Off, On, Auto). How long they may stay on (heat)
@@ -114,10 +119,11 @@ camera's frames and boxes), so ChakraV and Chakra never share a port. The previe
 free port; `sim.sh` prints it.
 
 **The module, emulated.** `camera_live.py --module v1.4` (default) or `v1.2` turns a video into the
-module's upright picture (scaled to cover it, centred; portrait 9:16 videos fit V1.4 exactly), then
-takes its centre square for the app, and the same square at twice the size (540 x 540) for the
-detector, which scores bowls far better there. From the Mac camera it takes the centre square of the
-Mac's picture at the module's angle. The Camera page's source line says what is emulated
+module's upright picture (scaled to cover it, centred), takes the view's 16:9 band from it for the app
+(on V1.4 the whole frame), and gives the detector the whole upright frame at 3/4 size (960 x 540),
+where it scores bowls far better; its boxes need no moving on V1.4, they are already the view's. From
+the Mac camera it takes the Mac's picture at the module's angle (V1.4: nearly all of it), the detector
+gets it at twice the view's size. The Camera page's source line says what is emulated
 ("Video · SC101IOT v1.4 emulated").
 
 **Camera and privacy.** macOS asks once for the camera permission of the app that starts
@@ -139,7 +145,7 @@ not part of this repository) has a ChakraV tile:
 
 | Line | Meaning |
 |---|---|
-| `frame\t<path>\t<luma>` | a JPEG of exactly 270 x 270, read at once; its mean luma drives the light's Auto |
+| `frame\t<path>\t<luma>` | a JPEG of exactly 400 x 224, read at once; its mean luma drives the light's Auto |
 | `boxes\tclear` then `box\t<label>\t<x>\t<y>\t<w>\t<h>\t<conf>` | a frame's marks, normalised 0..1, at most 7 |
 | `source\t<text>\t<camera\|video\|demo>` | the Camera page's source line and the indicator dot |
 | `sound\t<bowl\|other\|none>\t<strike>` | the local AI sound gate (`tools/ai_gate.py`); while none has spoken for 5 s the detection leads alone |
@@ -152,7 +158,9 @@ Per our Mosaico design rules (DESIGN.md in the workspace): top bar with title, c
 English first, German in the settings. The frame is 28 px (20 px was the other variant; 28 reads more as
 light). Its inner edge runs at the screen's radius minus the frame, at least 8 px; two dark veils make it
 fade softly inward, because ESP-GSP has no blur. The camera view keeps the screen's 20 px radius through
-the ring mask from DESIGN.md "Media". Boxes are four thin fills each, because a dynamic width resizes a
+the ring mask from DESIGN.md "Media". Layout (26.10.2026): the 400 x 224 view under the top bar, its edges
+the rows' edges below it: the name (28 px) with note and Hz, then the heard and seen pills (34 px) and the
+spectrum. Boxes are four thin fills each, because a dynamic width resizes a
 container's fill but not its border.
 
 Design references (25.10.2026):
@@ -177,7 +185,7 @@ Design references (25.10.2026):
    such videos, lets OWLv2 propose boxes (bowl, mallet, hand, gong), a person checks them, and a small
    detector for the ESP32-S31 is trained on them (choice and reasons: `docs/DETECTOR_CHOICE.md`).
 2. **On the board**: run `main/camera.c` on the real module and check what it marks as CHECK ON THE
-   BOARD (orientation, colours, the encoder at 270 px, the flash's heat, Auto's dark threshold); then a
+   BOARD (orientation, colours, the PPA's 400 x 224 from each module, the flash's heat, Auto's dark threshold); then a
    trained ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
 3. Measure the on-device AI on the board: the audio gate and the detector, latency and memory.
 4. The real cloud call behind Cloud AI, to compare its boxes with the on-device ones.
@@ -191,7 +199,7 @@ Design references (25.10.2026):
 | Screen: frame, camera view, boxes, pills, settings, hold to close | `components/app_chakra/chakra_core.c`, scene `ui/make_scene.py` |
 | Light: strike kick (at most 1 per 2 s), gong swell, the AI gate's colour rule, lamp pace; its host test | `components/app_chakra/chakra_light.c`, `tests/test_light.c` |
 | Board: microphone, Wi-Fi, lamps, settings in NVS (key `chakrav`, version 6) | `main/main.c` |
-| Board: the camera module, the square view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |
+| Board: the camera module, the 16:9 view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |
 | Simulator side and feeders | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |
 | Screenshots; brightness, contrast, change and the light's Auto over a video | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
 | Instruments on the Mac: OWLv2 in a thread, the tracker (bowls stay, played marks, a row named by its notes) | `tools/detect_owl.py`, `tools/bowl_tracker.py` |
