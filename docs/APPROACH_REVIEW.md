@@ -283,7 +283,14 @@ What a reviewer would ask for:
 own flag: strikes right went from 83 to 87 % in Flow and 87 to 90 % in Strike (70 strikes), the
 hand-marked own rounds from 13 to 14 of 14, latency unchanged; bells gained only 1 to 2 points. The
 log-spaced bands were tried and left out: they found 54 to 66 of the 70 strikes against 67 with linear
-bins, because they flatten the mallet's broadband attack. Change 3 is running (detector round 2).
+bins, because they flatten the mallet's broadband attack.
+
+**Status 27.10.2026.** Change 3 is done in the separate detector repo: 582 val frames hand-reviewed
+(the teacher missed 26 % of bowls and 93 % of hands; 84 % of its rainstick boxes were other things).
+Three classes at 416 x 234 against round 1 on the reviewed set: bowl AP50 0.785 against 0.710
+(+0.075 [+0.028, +0.137] over videos), gong 0.710 against 0.702, hand 0.020 against 0.017. Rainstick
+stays out (AP 0.00, and it cost the gong 0.10). Hands need reviewed training labels or Open Images, not a
+bigger model. int8 0.58 MB, about 178 ms a detection estimated on the S31.
 
 Not ranked, but do before the blog: correct the "under the WCAG flash line" wording (section 4), and run
 `review` on the AGPL question for the detector weights (DETECTOR_CHOICE.md), as the rules require for legal
