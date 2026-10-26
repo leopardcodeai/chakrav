@@ -61,6 +61,8 @@ MAX_MARKS = 7       # the owner plays 7 chakra bowls; the app draws CHAKRA_BOXES
 SHOW_STEADY = 0.25  # a track found in fewer than a quarter of the last detections is no longer drawn
 PLAYERS = {"Mallet", "Hand"}  # these play an instrument they are on; tracked only where last seen
 BLOCKERS = {"Foot", "Leg", "Head"}  # a "bowl" found on one of these is that, not a bowl (a foot was, 25.10.2026)
+BLOCK_IOU = 0.4    # ... only when the two boxes are about one thing: OWL draws "a person's head" over half a
+                   # body, and a bowl on the chest or in the hand of a lying person is a bowl (27.10.2026)
 HIDDEN = {"Hand"} | BLOCKERS  # helpers, never drawn
 PLAYER_MOVE = 5.0   # a hand or mallet box must change this much (0..255) to count as playing
 TOUCH = 0.15        # a player covering this share of a bowl touches it (the bowl it covers most)
@@ -184,9 +186,9 @@ class Tracker:
 
     def detections(self, found) -> None:
         """This frame's detections: [(label, x, y, w, h, score)], best first."""
-        blockers = [f[1:5] for f in found if f[0] in BLOCKERS]
+        blockers = [f for f in found if f[0] in BLOCKERS]
         found = [f for f in found if f[0] not in BLOCKERS and
-                 not (f[0] not in PLAYERS and any(inter(f[1:5], b) > 0.5 * f[3] * f[4] for b in blockers))]
+                 not (f[0] not in PLAYERS and any(iou(f[1:5], b[1:5]) > BLOCK_IOU and b[5] >= f[5] for b in blockers))]
         used = set()
         for label, *box, score in found:
             best, best_iou = None, IOU_MATCH
@@ -379,6 +381,11 @@ def self_test() -> None:
         tr.detections([("Singing bowl", 0.0, 0.5, 0.2, 0.2, 0.2), ("Foot", 0.0, 0.48, 0.25, 0.25, 0.3)])
         m = tr.step([0.0] * len(tr.tracks), -1)
     assert m == [], m
+    tr = Tracker()
+    for _ in range(3):  # a bowl on the chest of a lying person, under OWL's half-body "head" box: still a bowl
+        tr.detections([("Singing bowl", 0.43, 0.33, 0.17, 0.24, 0.31), ("Head", 0.3, 0.36, 0.43, 0.64, 0.16)])
+        m = tr.step([0.0] * len(tr.tracks), -1)
+    assert len(m) == 1 and m[0][0] == "Singing bowl", m
     tr = Tracker()
     for _ in range(3):  # one bowl found twice, and a hand on it
         tr.detections([("Singing bowl", 0.3, 0.3, 0.2, 0.2, 0.4), ("Singing bowl", 0.31, 0.3, 0.2, 0.24, 0.3),

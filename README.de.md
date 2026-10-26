@@ -202,7 +202,7 @@ das Bild an die Wand; hier verlängert der Rahmen den Klang in den Raum),
 | Simulatorseite und Einspeiser | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |
 | Instrumente auf dem Mac: OWLv2, der Tracker, der beste 16:9-Ausschnitt eines Videos | `tools/detect_owl.py`, `tools/bowl_tracker.py`, `tools/best_crop.py` |
 | Trainingsbilder für einen eigenen Detektor (privat, nie eingecheckt) | `tools/make_detector_data.py` |
-| Bildschirmfotos und Prüfungen | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
+| Bildschirmfotos und Prüfungen; große Standbilder dessen, was die Erkennung in einem Video sieht | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py`, `tools/render_detection.py` |
 
 Die internen Namen bleiben `app_chakra` und `gsp_chakra_*`, wie in ChakraA.
 
