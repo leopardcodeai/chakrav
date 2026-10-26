@@ -2,7 +2,8 @@
 
 Date: 26.10.2026. Scope: ESP-Mosaico (ESP32-S31), camera module V1.4 (SC101IOT) or V1.2 (OV3640) in the
 left slot H2, apps `apps/chakrav/main/camera.c` and `apps/camera/main/camera.c`. Nothing here has run on
-a board. Each answer says where it comes from: **code** (read in the sources we build), **docs**
+a board. Applied 26.10.2026 to both `camera.c` files (PID, orientation switches, EEPROM log, comments);
+the BSP submodule now stands at master `7cbfb39` (22.10.2026), past `b60f5d8`. Each answer says where it comes from: **code** (read in the sources we build), **docs**
 (Espressif pages), **inference** (reasoned from code and docs, to be confirmed on the board).
 
 Sources read:

@@ -2,12 +2,12 @@
 // ChakraV's camera on the board: the ESP-Mosaico camera module as the app's 16:9 view.
 //
 // What: one task opens the module through the BSP's mosaico_module_camera (it claims the left
-// slot, reads the slot EEPROM, detects the sensor by its ID and registers /dev/video2), takes a
-// UYVY frame every 1000 / fps ms, measures its mean luma (Rec. 601 Y, read straight from the UYVY
-// bytes), and turns the centre 16:9 band into the view: the PPA crops it (view_crop), scales it by
-// the largest exact 1/16 step that makes CHAKRA_CAM_W x CHAKRA_CAM_H (400 x 224), into RGB565; mounted
-// sideways (CHAKRA_CAM_LANDSCAPE 0) it also rotates 270 degrees and mirrors as the camera kit's
-// preview does (camera_lcd_preview). The hardware JPEG encoder makes the frame that
+// slot, reads the slot EEPROM, detects the sensor by its ID and registers /dev/video2), asks the
+// sensor for its PID itself (camera_sensor_pid) to name the module, takes a UYVY frame every
+// 1000 / fps ms, measures its mean luma (Rec. 601 Y, read straight from the UYVY bytes), and turns
+// the centre 16:9 band into the view: the PPA crops it (view_crop), scales it by the largest exact
+// 1/16 step that makes CHAKRA_CAM_W x CHAKRA_CAM_H (400 x 224), into RGB565, turned and mirrored as
+// the mount needs (view_transform). The hardware JPEG encoder makes the frame that
 // chakra_core_set_frame() shows. Three JPEG buffers: one being written, the newest finished one,
 // and the one the UI task is reading. The flash LED follows camera_board_light().
 //
@@ -17,10 +17,14 @@
 //         73 x 42 degrees; XCLK from the module's 20 MHz oscillator. The expected module.
 //   V1.2  OV3640, 1024 x 768 UYVY (CONFIG_CAMERA_OV3640_DVP_DEFAULT_FMT_YUV422_UYVY_1024X768_25FPS),
 //         68 degrees diagonal.
-//   The module is told apart by the format its sensor opens with (the config asks for width and
-//   height 0: each sensor's Kconfig default, sdkconfig.defaults), which the BSP chose after reading
-//   the sensor's PID (it logs "Camera opened: sensor=SC101IOT pid=0xDA4A"). The slot EEPROM
-//   (24C02 at 0x50) is logged too: its hw_version for V1.2 and V1.4 is not documented.
+//   The module is told apart by its sensor's PID (SC101IOT 0xDA4A, OV3640 0x364C or 0x3641), read
+//   through a second reference to /dev/video2 the way the BSP reads it (camera_sensor_pid; esp_video
+//   counts references, so the BSP's own fd stays open). The size the sensor opens with is only the
+//   fallback when that read fails: the config asks for width and height 0, each sensor's Kconfig
+//   default, and the OV3640 lines in sdkconfig.defaults must stay (its own default is RGB565
+//   640 x 480; the OV3640 driver also has a 1280 x 720 mode). The slot EEPROM (24C02 at 0x50) is
+//   logged once (log_module_info); it cannot tell V1.2 from V1.4: Espressif's programmer writes
+//   hw 1.2 into every profile (docs/CAMERA_BOARD_QUESTIONS.md, question 3).
 //   Mounted for landscape (CHAKRA_CAM_LANDSCAPE, default) the picture stays 1280 x 720 and the view is
 //   all of it (owner 26.10.2026: "Bildausschnitt wie bei Zielkamera 16:9"):
 //     V1.4  1280 x 717 at 5/16 = 400 x 224, the whole frame, 73 x 42 degrees (one view row of 225 left out)
@@ -29,6 +33,15 @@
 //   Sideways (CHAKRA_CAM_LANDSCAPE 0) the picture is turned to portrait and the view is a 16:9 band
 //   across it: raw 400 x 712 at 9/16, turned to 400 x 225, of which the encoder takes 224 rows; about
 //   42 x 26 degrees on V1.4. tools/camera_live.py view_crop() emulates the same.
+//
+// Orientation (docs/CAMERA_BOARD_QUESTIONS.md, question 2): the sensor reads out unmirrored. The PPA
+// scales, then rotates counter-clockwise, then mirrors (mirror_x left-right, mirror_y top-bottom).
+//   Landscape: rotation 0, no mirror; CHAKRA_CAM_TURN_180 turns it (mirror_x and mirror_y together)
+//   when the module sits the other way up.
+//   Sideways: 90 degrees counter-clockwise, no mirror, the true (rear-facing) picture. The camera kit's
+//   preview (camera_lcd_preview) uses 270 + mirror_y, which is the same picture mirrored left to right,
+//   the selfie view for the folded, front-facing lens: CHAKRA_CAM_MIRROR gives that look (it flips
+//   mirror_x in either mount, rotate first, mirror after).
 //
 // Flash: two LEDs on GPIO34, LOW = on, through a high-side P-MOS. The BSP drives GPIO34 as an
 // open-drain output, presets it high (off) before configuring it and disables its sleep select,
@@ -47,27 +60,48 @@
 //     whole blocks. 225 rows would end in a block of one row; Espressif's encoder table only shows
 //     partial blocks of 8 rows (1920 x 1080, jpeg.rst), and the driver checks no size, so an odd height
 //     would be a guess. The width was never the question: 400 is a multiple of 16, as 320 would be.
-//   * GPIO14 is DVP D4 while the camera runs, which suspends the slot EEPROM; GPIO33 is DVP D2 and
-//     shares the USB Serial/JTAG D- pad (the BSP takes the pad; ChakraV's console is the UART).
+//   * GPIO14 is DVP D4 while the camera runs. The slot EEPROM stays readable: the camera's EEPROM is
+//     fixed at 0x50 with no address pin, the BSP claims the slot with PROBE_WHILE_CLAIMED, and
+//     mosaico_module_mgr_get_info() returns the descriptor before, during and after streaming.
+//     GPIO33 is DVP D2 and shares the USB Serial/JTAG D- pad (the BSP takes the pad; ChakraV's
+//     console is the UART).
+//   * CAM_PWDN (GPIO48) is the BSP's since 7cbfb39 (b60f5d8, "fix: update camera app"): low = run,
+//     high = sleep, also for the SC101IOT; open and start wake the sensor, stop and close put it to
+//     sleep. The PID read runs between open and start, while the sensor is awake.
 //   * Return every frame before stopping or deleting the camera (BSP README); the task does.
-//   * CHECK ON THE BOARD: the orientation (landscape: which flip the mount needs; sideways: the kit
-//     preview's 270 + mirror_y is copied), that the PPA writes exactly 400 x 224 from V1.4's 1280 x 717
+//   * CHECK ON THE BOARD, the orientation (two minutes, docs/CAMERA_BOARD_QUESTIONS.md question 2):
+//     mount the module for landscape, lens facing away, and point it at a printed sheet with large
+//     text and an arrow pointing up. Text readable, arrow up: nothing to set. Upside down (arrow
+//     down): CHAKRA_CAM_TURN_180. Mirrored text (reads right to left) should not happen with the lens
+//     rear-facing: note fold state and mount, then try CHAKRA_CAM_MIRROR. Cross-check: a hand moved to
+//     your right moves to the picture's right. Once more with the lens folded to front-facing, to
+//     decide whether the selfie mirror is wanted. Expected (inference): turning the module 90 degrees
+//     clockwise from the kit's mount, seen from behind the camera, lands upright.
+//   * CHECK ON THE BOARD: the log lines agree on the module ("sc101iot: Detected Camera sensor
+//     PID=0xda4a", "mosaico_camera: Camera opened: sensor=SC101IOT pid=0xDA4A", ours "PID 0xDA4A"),
+//     what the slot EEPROM of the real V1.4 says (write it down here), that the PPA writes exactly 400 x 224 from V1.4's 1280 x 717
 //     at 5/16 and V1.2's 916 x 512 at 7/16 (and 400 x 225 sideways into the extra row), RGB565 byte
 //     order into the JPEG encoder (swapped colours: set pixel_reverse), how long the flash may stay on
 //     (heat), and Auto's LUMA_DARK with the SC101IOT's larger pixels (chakra_core.c).
 #include "camera.h"
 
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 #include "chakra_core.h"
 #include "driver/jpeg_encode.h"
 #include "driver/ppa.h"
 #include "esp_cache.h"
+#include "esp_cam_sensor_types.h"  // esp_cam_sensor_id_t, ESP_CAM_SENSOR_IOC_G_CHIP_ID
 #include "esp_check.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_video_device.h"      // ESP_VIDEO_DVP_DEVICE_NAME ("/dev/video2")
+#include "esp_video_ioctl.h"       // V4L2_CTRL_CLASS_ESP_CAM_IOCTL
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "linux/videodev2.h"
@@ -75,11 +109,23 @@
 #include "mosaico_module_mgr.h"
 
 /* How the module is mounted (owner 26.10.2026: "Querformat, die Kamera kann seitlich angeordnet werden").
- * 1: landscape, the sensor's 1280 x 720 stays upright (73 x 42 degrees on V1.4) and is the whole view;
- * 0: sideways as the camera kit's preview, turned 270 degrees to a portrait picture, the view a 16:9 band
- * across it. CHECK ON THE BOARD: which flip the landscape mount needs (the sensor may read out mirrored). */
+ * 1: landscape, the sensor's 1280 x 720 stays upright (73 x 42 degrees on V1.4) and is the whole view,
+ *    rotation 0, no mirror;
+ * 0: sideways (as in the camera kit), turned 90 degrees counter-clockwise to an unmirrored portrait
+ *    picture, the view a 16:9 band across it.
+ * CHECK ON THE BOARD with the text sheet and the arrow (header comment, Pitfalls). */
 #ifndef CHAKRA_CAM_LANDSCAPE
 #define CHAKRA_CAM_LANDSCAPE 1
+#endif
+/* 1: the picture comes out upside down (the module sits the other way up): turn it 180 degrees,
+ * mirror_x and mirror_y together. */
+#ifndef CHAKRA_CAM_TURN_180
+#define CHAKRA_CAM_TURN_180 0
+#endif
+/* 1: mirror left to right, the selfie view for the lens folded to face the viewer (sideways this is
+ * the kit preview's 270 + mirror_y). */
+#ifndef CHAKRA_CAM_MIRROR
+#define CHAKRA_CAM_MIRROR 0
 #endif
 #define JPEG_SLOTS 3             // writing, newest, being read
 #define VIEW_ROWS (CHAKRA_CAM_H + 1)  // the PPA's output: sideways the 9/16 step gives 225 rows, 224 are kept
@@ -220,7 +266,7 @@ typedef struct {
 
 /* The smallest step n/16 (the widest view) whose centred block fits the frame and scales to exactly
  * CHAKRA_CAM_W (the PPA rounds down: out = block * n / 16). Landscape: V1.4 1280 x 720 gives 1280 x 717
- * at 5/16, V1.2 1024 x 768 gives 916 x 512 at 7/16. Sideways (turned 270 degrees) the view's width comes
+ * at 5/16, V1.2 1024 x 768 gives 916 x 512 at 7/16. Sideways (turned 90 degrees) the view's width comes
  * from the raw rows and its height from the raw columns: 400 x 712 at 9/16 on both, 225 rows out.
  * tools/camera_live.py view_crop() emulates it. */
 static bool view_crop(uint32_t width, uint32_t height, view_crop_t *c)
@@ -242,6 +288,93 @@ static bool view_crop(uint32_t width, uint32_t height, view_crop_t *c)
     return false;
 }
 
+/* The PPA's turn and mirrors for the mount (header comment, Orientation). */
+typedef struct {
+    ppa_srm_rotation_angle_t rotation;
+    bool mirror_x, mirror_y;
+} view_transform_t;
+
+static view_transform_t view_transform(void)
+{
+    return (view_transform_t){
+        .rotation = CHAKRA_CAM_LANDSCAPE ? PPA_SRM_ROTATION_ANGLE_0    // landscape: upright as it comes
+                                         : PPA_SRM_ROTATION_ANGLE_90,  // sideways: 90 CCW, unmirrored
+        .mirror_x = (CHAKRA_CAM_TURN_180 != 0) != (CHAKRA_CAM_MIRROR != 0),
+        .mirror_y = CHAKRA_CAM_TURN_180 != 0,
+    };
+}
+
+/* Sensor PIDs (BSP mosaico_camera.c; esp_cam_sensor sc101iot.h, ov3640.h). */
+#define PID_SC101IOT 0xDA4A
+#define PID_OV3640_1 0x364C
+#define PID_OV3640_2 0x3641
+
+/* The sensor's product ID, read the way the BSP does it (mosaico_camera.c camera_get_sensor_id); 0 if
+ * unknown. Call after mosaico_camera_open(): it opens a second reference to the video device, which
+ * esp_video counts (esp_video.c esp_video_open), so closing it leaves the BSP's fd as it was. */
+static uint16_t camera_sensor_pid(void)
+{
+    const int fd = open(ESP_VIDEO_DVP_DEVICE_NAME, O_RDWR);
+    if (fd < 0) {
+        return 0;
+    }
+    esp_cam_sensor_id_t id = {0};
+    struct v4l2_ext_control c = {.id = ESP_CAM_SENSOR_IOC_G_CHIP_ID, .size = sizeof(id), .p_u8 = (uint8_t *)&id};
+    struct v4l2_ext_controls cs = {.ctrl_class = V4L2_CTRL_CLASS_ESP_CAM_IOCTL, .count = 1, .controls = &c};
+    const int r = ioctl(fd, VIDIOC_G_EXT_CTRLS, &cs);
+    close(fd);
+    return r == 0 ? id.pid : 0;
+}
+
+typedef enum { MODULE_UNKNOWN, MODULE_V14, MODULE_V12 } module_kind_t;
+
+/* The module from the sensor PID; the opened size only when the PID could not be read. */
+static module_kind_t module_kind(uint16_t pid, uint32_t width, uint32_t height)
+{
+    if (pid == PID_SC101IOT) {
+        return MODULE_V14;
+    }
+    if (pid == PID_OV3640_1 || pid == PID_OV3640_2) {
+        return MODULE_V12;
+    }
+    if (pid) {
+        return MODULE_UNKNOWN;  // a sensor the BSP would have rejected; do not guess from the size
+    }
+    return width == 1280 && height == 720 ? MODULE_V14 : width == 1024 && height == 768 ? MODULE_V12 : MODULE_UNKNOWN;
+}
+
+/* The slot EEPROM descriptor, once per open (docs/CAMERA_BOARD_QUESTIONS.md, question 3). It is read at
+ * discovery and stays readable while the camera holds GPIO14; after mosaico_camera_open() the loop
+ * returns at once (a claim needs a VALID descriptor). After a failed open it says why the claim
+ * failed (CRC or magic wrong, no module), once until a valid descriptor is seen again. */
+static void log_module_info(void)
+{
+    static bool told_invalid;
+    mosaico_module_mgr_info_t m = {0};
+    for (int i = 0; i < 20 && (mosaico_module_mgr_get_info(MOSAICO_MODULE_MGR_SLOT_LEFT, &m) != ESP_OK ||
+                               m.descriptor_state == MOSAICO_MODULE_DESCRIPTOR_UNKNOWN);
+         ++i) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    if (m.descriptor_state != MOSAICO_MODULE_DESCRIPTOR_VALID) {
+        if (told_invalid) {
+            return;
+        }
+        told_invalid = true;
+        ESP_LOGW(TAG, "slot EEPROM 0x%02x: presence %d, descriptor state %d, %s", m.eeprom_addr, m.presence,
+                 m.descriptor_state, esp_err_to_name(m.last_error));
+        return;
+    }
+    told_invalid = false;
+    const mosaico_module_mgr_eeprom_v1_t *e = &m.eeprom;
+    ESP_LOGI(TAG,
+             "slot EEPROM 0x%02x: type 0x%02x id 0x%04x hw %u.%u sw %u.%u vendor 0x%04x flags 0x%08" PRIx32
+             " serial %" PRIu32 " name %.32s date 0x%08" PRIx32 " batch %u factory %u param v%u len %u",
+             m.eeprom_addr, e->board_type, e->board_id, e->hw_version >> 8, e->hw_version & 0xFF, e->sw_version >> 8,
+             e->sw_version & 0xFF, e->vendor_id, e->board_flags, e->serial_number, e->board_name, e->manufacture_date,
+             e->batch_number, e->factory_id, e->param_version, e->param_length);
+}
+
 /* Opens the module; the source line names it, or says there is none. */
 static esp_err_t open_camera(pipeline_t *p)
 {
@@ -250,11 +383,14 @@ static esp_err_t open_camera(pipeline_t *p)
     if (err == ESP_OK) {
         err = mosaico_camera_open(p->cam);
     }
+    uint16_t pid = 0;
     if (err == ESP_OK) {
+        pid = camera_sensor_pid();  // open and awake (the BSP wakes CAM_PWDN on open)
         err = mosaico_camera_start_stream(p->cam);
     }
     if (err != ESP_OK) {
         if (p->cam) {
+            log_module_info();  // why the claim failed, if it was the descriptor
             mosaico_camera_del(p->cam);
             p->cam = NULL;
         }
@@ -264,16 +400,19 @@ static esp_err_t open_camera(pipeline_t *p)
     }
     mosaico_camera_info_t info = {0};
     mosaico_camera_get_info(p->cam, &info);
-    const bool v14 = info.width == 1280 && info.height == 720;
-    const bool v12 = info.width == 1024 && info.height == 768;
-    mosaico_module_mgr_info_t slot = {0};
-    if (mosaico_module_mgr_get_info(MOSAICO_MODULE_MGR_SLOT_LEFT, &slot) == ESP_OK &&
-        slot.descriptor_state == MOSAICO_MODULE_DESCRIPTOR_VALID) {
-        ESP_LOGI(TAG, "slot EEPROM: board %.32s, type 0x%02x, hw %u, sw %u", slot.eeprom.board_name,
-                 slot.eeprom.board_type, slot.eeprom.hw_version, slot.eeprom.sw_version);
+    log_module_info();
+    const module_kind_t kind = module_kind(pid, info.width, info.height);
+    const bool v14 = kind == MODULE_V14, v12 = kind == MODULE_V12;
+    ESP_LOGI(TAG, "camera %" PRIu32 " x %" PRIu32 " at %" PRIu32 " fps: %s (%s 0x%04X)", info.width, info.height,
+             info.frame_rate, v14 ? "V1.4 SC101IOT" : v12 ? "V1.2 OV3640" : "unknown module",
+             pid ? "PID" : "PID unread, by frame size;", pid);
+    if (pid && module_kind(0, info.width, info.height) != kind) {
+        ESP_LOGW(TAG, "frame %" PRIu32 " x %" PRIu32 " is not this module's usual size (sdkconfig.defaults?)",
+                 info.width, info.height);
     }
-    ESP_LOGI(TAG, "camera %" PRIu32 " x %" PRIu32 " at %" PRIu32 " fps: %s", info.width, info.height, info.frame_rate,
-             v14 ? "V1.4 SC101IOT" : v12 ? "V1.2 OV3640" : "unknown module");
+    const view_transform_t tr = view_transform();
+    ESP_LOGI(TAG, "mount %s: rotation %d CCW, mirror x %d y %d", CHAKRA_CAM_LANDSCAPE ? "landscape" : "sideways",
+             CHAKRA_CAM_LANDSCAPE ? 0 : 90, tr.mirror_x, tr.mirror_y);
     view_crop_t crop;
     if (info.pixel_format != V4L2_PIX_FMT_UYVY || !view_crop(info.width, info.height, &crop)) {
         set_source(CHAKRA_SOURCE_NONE, "Camera format not supported");
@@ -318,6 +457,7 @@ static esp_err_t take_frame(pipeline_t *p)
     }
     esp_cache_msync((void *)f.data, f.size, ESP_CACHE_MSYNC_FLAG_DIR_M2C | ESP_CACHE_MSYNC_FLAG_INVALIDATE);
     const int luma = frame_luma(&f, stride, &c);
+    const view_transform_t tr = view_transform();
     const ppa_srm_oper_config_t op = {
         .in = {.buffer = f.data, .pic_w = stride / 2U, .pic_h = f.height, .block_w = c.w, .block_h = c.h,
                .block_offset_x = c.x, .block_offset_y = c.y,
@@ -327,11 +467,11 @@ static esp_err_t take_frame(pipeline_t *p)
          * CHAKRA_CAM_H rows, which lie in one piece at the buffer's start (pic_w = CHAKRA_CAM_W). */
         .out = {.buffer = p->rgb, .buffer_size = p->rgb_size, .pic_w = CHAKRA_CAM_W, .pic_h = VIEW_ROWS,
                 .srm_cm = PPA_SRM_COLOR_MODE_RGB565},
-        .rotation_angle = CHAKRA_CAM_LANDSCAPE ? PPA_SRM_ROTATION_ANGLE_0  // landscape: as it comes
-                                               : PPA_SRM_ROTATION_ANGLE_270,  // as camera_lcd_preview
+        .rotation_angle = tr.rotation,  // landscape 0, sideways 90 CCW (view_transform)
         .scale_x = c.scale,  // an exact 1/16 step (view_crop)
         .scale_y = c.scale,
-        .mirror_y = !CHAKRA_CAM_LANDSCAPE,  // the kit's preview mirrors after its turn
+        .mirror_x = tr.mirror_x,
+        .mirror_y = tr.mirror_y,
         .mode = PPA_TRANS_MODE_BLOCKING,
     };
     err = ppa_do_scale_rotate_mirror(p->ppa, &op);

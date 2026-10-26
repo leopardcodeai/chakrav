@@ -61,9 +61,11 @@ sent and the seen pill says "Nothing".
 ## Hardware: the camera module
 
 The ESP-Mosaico is expected with the **camera module V1.4 (SC101IOT)**; the older **V1.2 (OV3640)**
-works too. Both sit in the **left slot** only. The app finds out which one it has from the format its
-sensor opens with (the BSP reads the sensor's ID first) and names it on the Camera page
-("SC101IOT v1.4 · 1280 × 720").
+works too. Both sit in the **left slot** only. The app asks the sensor for its ID (PID 0xDA4A
+SC101IOT, 0x364C or 0x3641 OV3640; the frame size only if that read fails) and names the module on the
+Camera page ("SC101IOT v1.4 · 1280 × 720"). The slot EEPROM is logged, but it cannot tell the two
+apart. BSP: esp-mosaico-bsp 7cbfb39 (22.10.2026, with the camera PWDN fix for the SC101IOT).
+Background: `docs/CAMERA_BOARD_QUESTIONS.md`.
 
 | Camera modules | V1.4 (expected) | V1.2 |
 |---|---|---|
@@ -81,6 +83,11 @@ sensor opens with (the BSP reads the sensor's ID first) and names it on the Came
   from its centre 916 x 512 at 7/16 (6/16 of its whole 16:9 band would be 384 x 216, a frame of another
   size). Mounted sideways (`CHAKRA_CAM_LANDSCAPE 0`, `--mount portrait`) the view is a 16:9 band across
   the upright portrait picture, 712 x 400 at 9/16, about 42 x 26 degrees on V1.4.
+- **Orientation.** The sensor reads out unmirrored. Landscape: no turn, no mirror. Sideways: turned 90
+  degrees counter-clockwise, no mirror (the true picture; the kit's preview shows it mirrored). Two
+  build switches in `main/camera.c`: `CHAKRA_CAM_TURN_180` when the picture is upside down,
+  `CHAKRA_CAM_MIRROR` for a selfie view. Which one the mount needs: the text sheet and arrow test in
+  `main/camera.c` (CHECK ON THE BOARD).
 - **Focus once.** The V1.4 lens has manual focus: turn it once to the distance of the bowls, with the
   live view open, then leave it.
 - **Light.** The flash LEDs are the camera light (Off, On, Auto). How long they may stay on (heat)
@@ -185,7 +192,7 @@ Design references (25.10.2026):
    such videos, lets OWLv2 propose boxes (bowl, mallet, hand, gong), a person checks them, and a small
    detector for the ESP32-S31 is trained on them (choice and reasons: `docs/DETECTOR_CHOICE.md`).
 2. **On the board**: run `main/camera.c` on the real module and check what it marks as CHECK ON THE
-   BOARD (orientation, colours, the PPA's 400 x 224 from each module, the flash's heat, Auto's dark threshold); then a
+   BOARD (orientation with the text sheet and arrow, the module's PID and slot EEPROM, colours, the PPA's 400 x 224 from each module, the flash's heat, Auto's dark threshold); then a
    trained ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
 3. Measure the on-device AI on the board: the audio gate and the detector, latency and memory.
 4. The real cloud call behind Cloud AI, to compare its boxes with the on-device ones.

@@ -63,9 +63,11 @@ Ohne den Schalter kommen keine Boxen, und die Pille "gesehen" sagt "Nichts".
 ## Hardware: das Kameramodul
 
 Erwartet wird der ESP-Mosaico mit dem **Kameramodul V1.4 (SC101IOT)**; das ältere **V1.2 (OV3640)**
-läuft auch. Beide stecken nur im **linken Steckplatz**. Welches es ist, erkennt die App am Format, mit dem
-ihr Sensor öffnet (das BSP liest vorher die Kennung des Sensors), und nennt es auf der Seite Kamera
-("SC101IOT v1.4 · 1280 × 720").
+läuft auch. Beide stecken nur im **linken Steckplatz**. Welches es ist, fragt die App den Sensor selbst
+(PID 0xDA4A SC101IOT, 0x364C oder 0x3641 OV3640; nur wenn das scheitert, zählt die Bildgröße), und nennt es
+auf der Seite Kamera ("SC101IOT v1.4 · 1280 × 720"). Das EEPROM des Steckplatzes wird protokolliert, kann
+die beiden aber nicht unterscheiden. BSP: esp-mosaico-bsp 7cbfb39 (22.10.2026, mit der PWDN-Korrektur für
+den SC101IOT). Hintergrund: `docs/CAMERA_BOARD_QUESTIONS.md`.
 
 | Kameramodule | V1.4 (erwartet) | V1.2 |
 |---|---|---|
@@ -84,6 +86,11 @@ ihr Sensor öffnet (das BSP liest vorher die Kennung des Sensors), und nennt es 
   16:9-Streifens wären 384 x 216, ein Bild anderer Größe). Seitlich eingebaut (`CHAKRA_CAM_LANDSCAPE 0`,
   `--mount portrait`) ist das Bild ein 16:9-Streifen quer durch das aufrechte Hochkantbild, 712 x 400 mit
   9/16, etwa 42 x 26 Grad bei V1.4.
+- **Ausrichtung.** Der Sensor liest ungespiegelt aus. Quer: keine Drehung, kein Spiegeln. Seitlich: 90 Grad
+  gegen den Uhrzeigersinn gedreht, ungespiegelt (das wahre Bild; die Vorschau des Kits zeigt es
+  gespiegelt). Zwei Bauschalter in `main/camera.c`: `CHAKRA_CAM_TURN_180`, wenn das Bild kopfsteht,
+  `CHAKRA_CAM_MIRROR` für die Selfie-Ansicht. Welchen der Einbau braucht, zeigt der Test mit Textblatt und
+  Pfeil in `main/camera.c` (CHECK ON THE BOARD).
 - **Einmal scharf stellen.** Das Objektiv der V1.4 hat manuellen Fokus: bei offenem Live-Bild einmal auf
   den Abstand der Schalen drehen, dann so lassen.
 - **Licht.** Die Blitz-LEDs sind das Kameralicht (Aus, An, Auto). Wie lange sie an bleiben dürfen (Wärme)
@@ -181,7 +188,7 @@ Gestaltungsvorbilder (25.10.2026):
    - **Hilft das Licht?** Die Automatik des Kameralichts schaltete im dunklen Video nach 2 s ein und blieb an.
      Auf dem Board den Detektor mit und ohne Blitz-LED messen, und ihre Wärme im Dauerbetrieb.
 2. **Auf dem Board**: `main/camera.c` mit dem echten Modul laufen lassen und prüfen, was dort als CHECK ON
-   THE BOARD steht (Ausrichtung, Farben, die 400 x 224 der PPA aus jedem Modul, die Wärme des Blitzes, die Dunkel-Schwelle
+   THE BOARD steht (Ausrichtung mit Textblatt und Pfeil, PID des Moduls und EEPROM des Steckplatzes, Farben, die 400 x 224 der PPA aus jedem Modul, die Wärme des Blitzes, die Dunkel-Schwelle
    der Automatik); dann ein trainiertes ESPDet-Pico auf dem ESP32-S31 für die Instrumente; ein Canvas-Ziel
    statt JPEG-Bildern.
 3. Die KI auf dem Gerät am Board messen: Klangfilter und Detektor, Laufzeit und Speicher.
