@@ -191,6 +191,7 @@ Design references (25.10.2026):
    two or three of many bowls. Next: `tools/make_detector_data.py` takes frames from the owner's videos and
    such videos, lets OWLv2 propose boxes (bowl, mallet, hand, gong), a person checks them, and a small
    detector for the ESP32-S31 is trained on them (choice and reasons: `docs/DETECTOR_CHOICE.md`).
+   The training pipeline (ESPDet-Pico, AGPL-3.0) lives apart in `../chakrav_detector`, local only.
 2. **On the board**: run `main/camera.c` on the real module and check what it marks as CHECK ON THE
    BOARD (orientation with the text sheet and arrow, the module's PID and slot EEPROM, colours, the PPA's 400 x 224 from each module, the flash's heat, Auto's dark threshold); then a
    trained ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.

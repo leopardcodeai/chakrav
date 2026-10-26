@@ -187,6 +187,7 @@ Gestaltungsvorbilder (25.10.2026):
      Instrument bleiben und nicht mit dem Hintergrund springen.
    - **Hilft das Licht?** Die Automatik des Kameralichts schaltete im dunklen Video nach 2 s ein und blieb an.
      Auf dem Board den Detektor mit und ohne Blitz-LED messen, und ihre Wärme im Dauerbetrieb.
+   Die Trainings-Pipeline (ESPDet-Pico, AGPL-3.0) liegt getrennt in `../chakrav_detector`, nur lokal.
 2. **Auf dem Board**: `main/camera.c` mit dem echten Modul laufen lassen und prüfen, was dort als CHECK ON
    THE BOARD steht (Ausrichtung mit Textblatt und Pfeil, PID des Moduls und EEPROM des Steckplatzes, Farben, die 400 x 224 der PPA aus jedem Modul, die Wärme des Blitzes, die Dunkel-Schwelle
    der Automatik); dann ein trainiertes ESPDet-Pico auf dem ESP32-S31 für die Instrumente; ein Canvas-Ziel
