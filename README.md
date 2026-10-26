@@ -169,16 +169,12 @@ Design references (25.10.2026):
 
 ## Next
 
-1. **Real detection on the Mac**: an open-vocabulary detector such as OWL-ViT ("singing bowl", "tuning
-   fork", "gong", "chimes", "drum") in `camera_live.py`, replacing the stub. Test it where it is hard:
-   - **Low light.** Sound healing rooms are dim. `tools/check_frames.py` on two freely licensed test videos
-     (25.10.2026): a floating gong in a dark room averaged a luma of 6 of 255 with a contrast of 19, flat 59 %
-     of the time; a gong and drum session was bright (luma 109, contrast 84). Measure the detector on both.
-   - **Changing backgrounds.** The gong and drum video changed by 8.4 luma levels a frame on average (up to
-     12), the dark one by 0.5: moving people and light. Check that boxes stay on the instrument and do not
-     jump with the background.
-   - **Does the light help?** The camera light's Auto switched on after 2 s in the dark video and stayed on.
-     On the board, measure the detector with and without the flash LED, and its heat when left on.
+1. **An own detector.** On the Mac, OWLv2 (zero-shot) with a tracker marks bowls well on bright, clear
+   pictures: seven of seven in five of six freely available chakra-set videos, and on the owner's calibration
+   rounds it names all seven bowls by their notes after one round. In a dim session with a wide lens it found
+   two or three of many bowls. Next: `tools/make_detector_data.py` takes frames from the owner's videos and
+   such videos, lets OWLv2 propose boxes (bowl, mallet, hand, gong), a person checks them, and a small
+   detector for the ESP32-S31 is trained on them (choice and reasons: `docs/DETECTOR_CHOICE.md`).
 2. **On the board**: run `main/camera.c` on the real module and check what it marks as CHECK ON THE
    BOARD (orientation, colours, the encoder at 270 px, the flash's heat, Auto's dark threshold); then a
    trained ESPDet-Pico on the ESP32-S31 for the instruments; a Canvas target instead of JPEG frames.
@@ -196,6 +192,8 @@ Design references (25.10.2026):
 | Board: the camera module, the square view, its luma, the flash | `main/camera.c`, camera block in `sdkconfig.defaults` |
 | Simulator side and feeders | `components/app_chakra/host/platform_pc.c`, `tools/chakra_feed.py`, `tools/camera_live.py` |
 | Screenshots; brightness, contrast, change and the light's Auto over a video | `tools/screens.py`, `tools/sim_shot.py`, `tools/check_frames.py` |
+| Instruments on the Mac: OWLv2 in a thread, the tracker (bowls stay, played marks, a row named by its notes) | `tools/detect_owl.py`, `tools/bowl_tracker.py` |
+| Training frames for an own detector, boxes proposed by OWLv2, review sheets (private, never committed) | `tools/make_detector_data.py` |
 
 The internal names stay `app_chakra` and `gsp_chakra_*`, as in the chakra app.
 
