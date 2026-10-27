@@ -15,7 +15,9 @@ Privacy: the stills show the people in the video. Use it only on a video whose p
 Pitfalls:
   * Runs in the AI venv (torch, transformers); OWLv2 on the Mac GPU, about 0.1 to 0.6 s a frame.
   * The tracker needs a few seconds to confirm and name bowls: stills in the first 5 s show little.
-Usage:  AI_VENV/bin/python tools/render_detection.py VIDEO OUT [--every 6] [--fps 5] [--width 1440] [--dry-run]
+      With --clip A B it saves every frame from A to B s instead (OUT/frames/), for an animation.
+Usage:  AI_VENV/bin/python tools/render_detection.py VIDEO OUT [--every 6] [--fps 5] [--width 1440]
+            [--clip A B] [--dry-run]
 """
 import argparse
 import json
@@ -110,6 +112,7 @@ def main():
     ap.add_argument("--every", type=float, default=6.0)
     ap.add_argument("--fps", type=float, default=5.0)
     ap.add_argument("--width", type=int, default=1440)
+    ap.add_argument("--clip", type=float, nargs=2, metavar=("A", "B"), help="every frame from A to B s")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.dry_run:
@@ -134,7 +137,9 @@ def main():
                           stdout=subprocess.PIPE)
     det = subprocess.Popen([sys.executable, str(HERE / "detect_owl.py"), "--sync"], stdin=subprocess.PIPE,
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    total = int(dur * a.fps)
+    total = int((a.clip[1] if a.clip else dur) * a.fps)
+    if a.clip:
+        (a.out / "frames").mkdir(exist_ok=True)
     bar = progress.Bar("Detection stills", total=total, unit="frames") if progress else None
     files, i, next_still = [], 0, a.every
     while True:
@@ -149,7 +154,12 @@ def main():
         det.stdin.write(struct.pack(">Ib", buf.tell(), heard) + buf.getvalue())
         det.stdin.flush()
         marks = json.loads(det.stdout.readline())
-        if t >= next_still:
+        if a.clip:
+            if t > a.clip[1]:
+                break
+            if t >= a.clip[0]:
+                draw(frame, marks, heard, W).save(a.out / "frames" / f"f{i:05d}.png")
+        elif t >= next_still:
             f = a.out / f"t{int(t):03d}.png"
             draw(frame, marks, heard, W).save(f)
             f.with_suffix(".json").write_text(json.dumps({"t": t, "heard": heard, "marks": marks}))
@@ -161,6 +171,10 @@ def main():
     det.stdin.close()
     if bar:
         bar.done()
+    ff.kill()
+    if a.clip:
+        print(f"frames {a.clip[0]} to {a.clip[1]} s in {a.out / 'frames'}")
+        return
     sheet(a.out, files)
     print(f"{len(files)} stills and sheet.png in {a.out}")
 

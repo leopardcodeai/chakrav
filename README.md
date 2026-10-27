@@ -10,6 +10,11 @@ microphone, camera slot). A thick frame around the screen glows in the colour of
 live picture sits in the middle, boxes mark the instruments, and two pills say what it hears and what it
 sees. German: [README.de.md](README.de.md).
 
+<p align="center"><img src="docs/detection.gif" width="560" alt="A real sound healing session on the Mac: OWLv2 and the tracker mark seven bowls and the mallet; the bowl in the right hand of the person lying down is named Bowl G and turns amber while Throat (G) sounds"> <img src="docs/app_session.gif" width="240" alt="The same session in the app: the frame glows blue for Throat, violet for Crown, and amber marks the played bowl"></p>
+
+*A real session, played on the Mac through the same chain as the board (`tools/render_detection.py`), shown
+with the consent of the people in it. Amber: the bowl played now; "Bowl G": a bowl that has its note.*
+
 ## Which one?
 
 Two apps, one code base. In yoga and sound healing many people want no AI at all, or only AI that stays in
@@ -30,7 +35,7 @@ If you do not need the camera, or want no AI beyond the device, take ChakraA.
 |---|---|---|---|
 | ![Frame in the Heart's green, the demo scene with three marked instruments, Heart F3 174.8 Hz, heard Tone, seen Bowl](docs/screen_main.png) | ![Colour, brightness 30 %, sensitivity, afterglow, Flow or Strike, mapping, language, local AI sound gate](docs/screen_settings.png) | ![Camera, boxes, 1, 2 or 4 fps, the camera light, Cloud AI, the source 400 x 224](docs/screen_camera.png) | ![The screen lamp ticked, the other lamps not paired](docs/screen_connections.png) |
 
-All screenshots use the drawn demo scene (`tools/camera_live.py --demo`), never a real camera picture.
+The screenshots use the drawn demo scene (`tools/camera_live.py --demo`); only the two animations above show a real session.
 
 ## What it does (v0, 26 October 2026)
 

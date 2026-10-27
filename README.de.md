@@ -10,6 +10,12 @@ Audio-App, für Espressifs [ESP-Mosaico](https://mosaico.espressif.com) (ESP32-S
 gehörten Chakras, das Live-Bild steht in der Mitte, Boxen markieren die Instrumente, und zwei Pillen zeigen,
 was sie hört und was sie sieht. Englische Fassung (Quelle): [README.md](README.md).
 
+<p align="center"><img src="docs/detection.gif" width="560" alt="Eine echte Klangsitzung auf dem Mac: OWLv2 und der Tracker markieren sieben Schalen und den Schlägel; die Schale in der rechten Hand der Liegenden heißt Bowl G und wird amber, während Throat (G) klingt"> <img src="docs/app_session.gif" width="240" alt="Dieselbe Sitzung in der App: der Rahmen leuchtet blau für Throat, violett für Crown, amber markiert die gespielte Schale"></p>
+
+*Eine echte Sitzung, auf dem Mac durch dieselbe Kette wie auf dem Board gespielt (`tools/render_detection.py`),
+gezeigt mit Einverständnis der Personen darin. Amber: die gerade gespielte Schale; "Bowl G": eine Schale, die
+ihren Ton kennt.*
+
 ## Welche App?
 
 Zwei Apps, ein Code. Im Yoga und in der Klangarbeit wollen viele Menschen gar keine KI oder nur KI, die im
@@ -30,8 +36,8 @@ Wer keine Kamera braucht oder keine KI außerhalb des Geräts will, nimmt Chakra
 |---|---|---|---|
 | ![Rahmen im Grün des Herzens, Demo-Szene mit drei markierten Instrumenten, Herz F3 174,8 Hz](docs/screen_main.png) | ![Farbe, Helligkeit 30 %, Empfindlichkeit, Nachklang, Flow oder Strike, Zuordnung, Sprache, lokaler KI-Klangfilter](docs/screen_settings.png) | ![Kamera, Boxen, 1, 2 oder 4 fps, Kameralicht, Cloud-KI, Quelle 400 x 224](docs/screen_camera.png) | ![Bildschirm-Lampe angehakt, die anderen Lampen nicht gekoppelt](docs/screen_connections.png) |
 
-Alle Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --demo`), nie ein echtes
-Kamerabild.
+Die Bildschirmfotos zeigen die gezeichnete Demo-Szene (`tools/camera_live.py --demo`); nur die beiden
+Animationen oben zeigen eine echte Sitzung.
 
 ## Was sie kann (v0, 26. Oktober 2026)
 
