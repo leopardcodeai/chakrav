@@ -85,7 +85,7 @@ Focus the V1.4 lens once, to the distance of the bowls, with the live view open.
   `main/camera.c`, `CHAKRA_CAM_TURN_180` and `CHAKRA_CAM_MIRROR`, plus a text sheet and arrow test for the
   first run on the board.
 - **Module ID.** PID 0xDA4A is the SC101IOT, 0x364C or 0x3641 the OV3640; the frame size only if that read
-  fails. The slot EEPROM is logged but cannot tell the two apart. BSP: esp-mosaico-bsp 7cbfb39 (22.10.2026,
+  fails. The slot EEPROM is logged but cannot tell the two apart. BSP: esp-mosaico-bsp 716fc7b (05.11.2026,
   with the camera PWDN fix for the SC101IOT).
 - **Flash.** Two LEDs on GPIO34, LOW = on, open drain. How long they may stay on (heat) and Auto's dark
   threshold are still to be measured on the board.

@@ -90,7 +90,7 @@ Das Objektiv der V1.4 einmal auf den Abstand der Schalen scharf stellen, bei off
   den ersten Lauf auf dem Board.
 - **Modulkennung.** PID 0xDA4A ist der SC101IOT, 0x364C oder 0x3641 der OV3640; die Bildgröße nur, wenn das
   Lesen scheitert. Das EEPROM des Steckplatzes wird protokolliert, unterscheidet die beiden aber nicht. BSP:
-  esp-mosaico-bsp 7cbfb39 (22.10.2026, mit der PWDN-Korrektur für den SC101IOT).
+  esp-mosaico-bsp 716fc7b (05.11.2026, mit der PWDN-Korrektur für den SC101IOT).
 - **Blitz.** Zwei LEDs an GPIO34, LOW = an, Open Drain. Wie lange sie an bleiben dürfen (Wärme) und die
   Dunkelschwelle von Auto werden auf dem Board gemessen.
 - Hintergrund: [docs/CAMERA_BOARD_QUESTIONS.md](docs/CAMERA_BOARD_QUESTIONS.md) (englisch).
