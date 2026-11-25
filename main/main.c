@@ -40,6 +40,7 @@
 #include "esp_http_client.h"
 #include "esp_http_server.h"
 #include "esp_iris.h"
+#include "mosaico_usb_clean_start.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_netif_sntp.h"
@@ -781,6 +782,8 @@ static void wifi_and_lamps_start(void)
 
 void app_main(void)
 {
+    /* Before ESP-Iris installs TinyUSB: clear the USB PHY state a software reset leaves behind (USB dropout). */
+    mosaico_usb_clean_start();
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_iris_boot_probe());
     ESP_ERROR_CHECK(nvs_flash_init());
     /* lwIP first: tasks created below open sockets and HTTP clients before Wi-Fi starts. Until 24.11.2026 the

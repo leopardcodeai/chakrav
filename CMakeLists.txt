@@ -11,7 +11,8 @@ include("${MOSAICO_UTILS_ROOT}/mosaico-tools/cmake/gsp_compiler.cmake")
 list(APPEND EXTRA_COMPONENT_DIRS
     "${MOSAICO_UTILS_ROOT}/mosaico-tools/components/esp_mosaico_app_recovery"
     "${MOSAICO_UTILS_ROOT}/mosaico-tools/components/esp_mosaico_gsp_bundle"
-    "${MOSAICO_UTILS_ROOT}/mosaico-tools/components/esp_mosaico_gsp_iris")
+    "${MOSAICO_UTILS_ROOT}/mosaico-tools/components/esp_mosaico_gsp_iris"
+    "${CMAKE_CURRENT_LIST_DIR}/../../components/mosaico_usb_clean_start")
 include("${MOSAICO_UTILS_ROOT}/mosaico-tools/cmake/mosaico_idf_project.cmake")
 project(chakrav_mosaico VERSION 0.1.0)
 include("${MOSAICO_UTILS_ROOT}/mosaico-tools/cmake/system_update.cmake")
