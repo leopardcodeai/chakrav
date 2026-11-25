@@ -764,7 +764,9 @@ static void wifi_and_lamps_start(void)
         }
         esp_websocket_client_config_t ws = {
             .uri = app.ha_url,
-            .reconnect_timeout_ms = 10000,
+            /* 3 s, not 10: the first connect runs before Wi-Fi has an address and fails ("Host is
+             * unreachable"); with 10 s the app showed no Home Assistant data for about 15 s (24.11.2026). */
+            .reconnect_timeout_ms = 3000,
             .network_timeout_ms = 10000,
             .buffer_size = 2048,
             .crt_bundle_attach = tls ? esp_crt_bundle_attach : NULL,
