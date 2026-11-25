@@ -53,6 +53,7 @@
 #include "iris_screen_mirror.h"
 #include "lwip/sockets.h"
 #include "nvs.h"
+#include "mosaico_shared.h"
 #include "nvs_flash.h"
 #include "ui_bundle.h"
 
@@ -595,15 +596,13 @@ static int known_networks(net_t *nets)
 {
     int n = 0;
     nvs_handle_t h;
-    if (nvs_open_from_partition("sysmeta", "shared", NVS_READONLY, &h) == ESP_OK) {
-        size_t a = sizeof(nets[0].ssid), b = sizeof(nets[0].pass);
-        if (nvs_get_str(h, "wifi_ssid", nets[0].ssid, &a) == ESP_OK && nets[0].ssid[0]) {
-            if (nvs_get_str(h, "wifi_password", nets[0].pass, &b) != ESP_OK) {
-                nets[0].pass[0] = '\0';
-            }
-            n = 1;
+    /* Vibe Mode's shared Wi-Fi. mosaico_shared_get opens the sysmeta partition itself; since Vibe Mode 0.3
+     * nothing else initialises it for the app, so a bare nvs_open_from_partition fails (24.11.2026). */
+    if (mosaico_shared_get("wifi_ssid", nets[0].ssid, sizeof(nets[0].ssid)) == ESP_OK && nets[0].ssid[0]) {
+        if (mosaico_shared_get("wifi_password", nets[0].pass, sizeof(nets[0].pass)) != ESP_OK) {
+            nets[0].pass[0] = '\0';
         }
-        nvs_close(h);
+        n = 1;
     }
     if (nvs_open(NVS_NS, NVS_READONLY, &h) == ESP_OK) {
         for (int i = 0; i < MAX_NETS && n < MAX_NETS + 1; ++i) {
@@ -782,6 +781,9 @@ void app_main(void)
 {
     ESP_ERROR_CHECK_WITHOUT_ABORT(esp_iris_boot_probe());
     ESP_ERROR_CHECK(nvs_flash_init());
+    /* lwIP first: tasks created below open sockets and HTTP clients before Wi-Fi starts. Until 24.11.2026 the
+     * old ESP-Iris TCP transport brought the stack up early; without it socket() asserts "Invalid mbox". */
+    ESP_ERROR_CHECK(esp_netif_init());
     /* Recovery must remain reachable even when the UI bundle cannot be loaded. */
     iris_ota_support_start();
 
